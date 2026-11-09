@@ -55,6 +55,7 @@ CREATE TABLE IF NOT EXISTS catalog (
   paint_yield REAL,
   coats       INTEGER DEFAULT 2,
   notes       TEXT,
+  image       TEXT,
   active       INTEGER DEFAULT 1,
   created_at  TEXT,
   updated_at  TEXT
@@ -124,6 +125,7 @@ function ensureCol(table, col, def) {
 }
 ensureCol('quote_items', 'cost_type', "TEXT DEFAULT 'otro'");
 ensureCol('catalog',     'cost_type', "TEXT DEFAULT 'materiales'");
+ensureCol('catalog',     'image',     "TEXT");
 
 // ---------- Valores por defecto (primera corrida) ----------
 const DEFAULT_META = {
@@ -307,11 +309,11 @@ app.post('/api/catalog', wrap((req, res) => {
   const b = req.body || {};
   if (!str(b.name).trim()) return res.status(400).json({ error: 'El nombre es obligatorio' });
   const id = uid(), t = now();
-  db.prepare(`INSERT INTO catalog (id,category,cost_type,name,unit,unit_price,paint_yield,coats,notes,active,created_at,updated_at)
-              VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`)
+  db.prepare(`INSERT INTO catalog (id,category,cost_type,name,unit,unit_price,paint_yield,coats,notes,image,active,created_at,updated_at)
+              VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`)
     .run(id, str(b.category), str(b.cost_type) || 'materiales', str(b.name).trim(), str(b.unit) || 'm2', num(b.unit_price),
          b.paint_yield == null || b.paint_yield === '' ? null : num(b.paint_yield),
-         num(b.coats, 2), str(b.notes), b.active === 0 ? 0 : 1, t, t);
+         num(b.coats, 2), str(b.notes), str(b.image), b.active === 0 ? 0 : 1, t, t);
   res.json(db.prepare('SELECT * FROM catalog WHERE id=?').get(id));
 }));
 
@@ -319,10 +321,10 @@ app.put('/api/catalog/:id', wrap((req, res) => {
   const b = req.body || {};
   const exists = db.prepare('SELECT id FROM catalog WHERE id=?').get(req.params.id);
   if (!exists) return res.status(404).json({ error: 'Item no encontrado' });
-  db.prepare(`UPDATE catalog SET category=?, cost_type=?, name=?, unit=?, unit_price=?, paint_yield=?, coats=?, notes=?, active=?, updated_at=? WHERE id=?`)
+  db.prepare(`UPDATE catalog SET category=?, cost_type=?, name=?, unit=?, unit_price=?, paint_yield=?, coats=?, notes=?, image=?, active=?, updated_at=? WHERE id=?`)
     .run(str(b.category), str(b.cost_type) || 'materiales', str(b.name).trim(), str(b.unit) || 'm2', num(b.unit_price),
          b.paint_yield == null || b.paint_yield === '' ? null : num(b.paint_yield),
-         num(b.coats, 2), str(b.notes), b.active === 0 ? 0 : 1, now(), req.params.id);
+         num(b.coats, 2), str(b.notes), str(b.image), b.active === 0 ? 0 : 1, now(), req.params.id);
   res.json(db.prepare('SELECT * FROM catalog WHERE id=?').get(req.params.id));
 }));
 

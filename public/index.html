@@ -496,8 +496,10 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
   <!-- CATALOG -->
   <section class="view" id="view-catalog">
     <div class="page-head"><h1>Catálogo de precios</h1><div class="spacer"></div>
-      <button class="btn primary" onclick="editCatalog()">+ Nuevo servicio</button></div>
-    <div class="hint" style="margin-bottom:14px">Servicios y precios que reutilizas al armar cotizaciones. El rendimiento (m²/galón) sirve para estimar materiales.</div>
+      <input id="catSearch" placeholder="Buscar..." style="width:180px" oninput="paintCatalog()">
+      <button class="btn" onclick="bulkImport()">📥 Importar lista</button>
+      <button class="btn primary" onclick="editCatalog()">+ Nuevo producto</button></div>
+    <div class="hint" style="margin-bottom:14px">Tu memoria de precios: pintura, materiales, mano de obra, equipos, herramientas y alquileres. Luego los buscas en la cotización y se suman solos. Puedes agregar foto (URL o archivo).</div>
     <div class="panel"><div id="catalogList"></div></div>
   </section>
 
@@ -785,7 +787,7 @@ function searchProducts(q){
   box.innerHTML = !S.catalog.length
     ? '<div class="pr-empty">Catálogo vacío — carga tus precios en la pestaña <b>Catálogo</b>.</div>'
     : (list.length ? list.map(c=>`<div class="pr-item" onmousedown="addFromCatalog('${c.id}')">
-        <span>${COST_ICON[c.cost_type]||'•'} <b>${esc(c.name)}</b> <span class="tag">${COST_LBL[c.cost_type]||''}</span></span>
+        <span style="display:flex;align-items:center;gap:7px">${c.image?`<img src="${esc(c.image)}" style="width:26px;height:26px;object-fit:cover;border-radius:5px" onerror="this.style.display='none'">`:`${COST_ICON[c.cost_type]||'•'}`} <b>${esc(c.name)}</b> <span class="tag">${COST_LBL[c.cost_type]||''}</span></span>
         <span class="mono" style="color:var(--cyan2)">${money(c.unit_price)}/${esc(c.unit||'')}</span></div>`).join('')
       : '<div class="pr-empty">Sin coincidencias</div>');
   box.classList.add('show');
@@ -967,15 +969,23 @@ async function delClient(id){
 const CAT_NAMES={'pintura-interior':'Pintura interior','pintura-exterior':'Pintura exterior','gypsum':'Gypsum','remodelacion':'Remodelación','otro':'Otro'};
 async function renderCatalog(){
   try{ S.catalog = await api.get('/api/catalog'); }catch(e){}
-  $('catalogList').innerHTML = S.catalog.length ? `<table class="tbl"><thead><tr>
-    <th>Producto / servicio</th><th>Tipo de costo</th><th>Unidad</th><th class="num">Precio</th><th class="num">m²/gal</th><th class="num">Manos</th><th></th></tr></thead><tbody>
-    ${S.catalog.map(c=>`<tr>
+  paintCatalog();
+}
+function catThumb(c){ return c.image ? `<img src="${esc(c.image)}" style="width:40px;height:40px;object-fit:cover;border-radius:7px;border:1px solid var(--border)" onerror="this.style.display='none'">` : `<div style="width:40px;height:40px;border-radius:7px;background:var(--panel2);border:1px solid var(--border);display:grid;place-items:center;color:var(--muted2);font-size:16px">${COST_ICON[c.cost_type]||'•'}</div>`; }
+function paintCatalog(){
+  const q=($('catSearch')?.value||'').toLowerCase().trim();
+  let list=S.catalog;
+  if(q) list=list.filter(c=>[c.name,c.cost_type,c.notes].some(f=>String(f||'').toLowerCase().includes(q)));
+  $('catalogList').innerHTML = list.length ? `<table class="tbl"><thead><tr>
+    <th></th><th>Producto / servicio</th><th>Tipo de costo</th><th>Unidad</th><th class="num">Precio</th><th class="num">m²/gal</th><th></th></tr></thead><tbody>
+    ${list.map(c=>`<tr>
+      <td>${catThumb(c)}</td>
       <td><b>${esc(c.name)}</b></td><td><span class="tag">${COST_ICON[c.cost_type]||''} ${COST_LBL[c.cost_type]||c.cost_type||''}</span></td>
       <td>${esc(c.unit||'')}</td><td class="num mono">${money(c.unit_price)}</td>
-      <td class="num">${c.paint_yield||'—'}</td><td class="num">${c.coats||''}</td>
+      <td class="num">${c.paint_yield||'—'}</td>
       <td class="num"><button class="btn sm ghost" onclick='editCatalog(${JSON.stringify(c.id)})'>Editar</button>
       <button class="btn sm danger" onclick='delCatalog(${JSON.stringify(c.id)})'>✕</button></td>
-    </tr>`).join('')}</tbody></table>` : emptyBox('Catálogo vacío','Agrega servicios con su precio para reutilizarlos.');
+    </tr>`).join('')}</tbody></table>` : emptyBox(q?'Sin coincidencias':'Catálogo vacío', q?'':'Agrega productos con su precio, o usa 📥 Importar lista.');
 }
 function editCatalog(id){
   const c = id ? S.catalog.find(x=>x.id===id) : {cost_type:'materiales',category:'otro',name:'',unit:'und',unit_price:0,paint_yield:'',coats:S.settings.default_coats||2,notes:''};
@@ -990,17 +1000,58 @@ function editCatalog(id){
       <label class="f"><span>Manos (si es pintura)</span><input type="number" step="1" id="k_coats" value="${c.coats||2}"></label>
     </div>
     <label class="f"><span>Rendimiento (m²/galón) — solo pintura</span><input type="number" step="1" id="k_yield" value="${c.paint_yield||''}"></label>
+    <label class="f"><span>Foto del producto (pega una URL o sube un archivo)</span><input id="k_image" value="${esc(c.image||'')}" placeholder="https://...jpg" oninput="catImgPreview()"></label>
+    <div style="display:flex;align-items:center;gap:10px;margin:-4px 0 12px">
+      <img id="k_imgprev" src="${esc(c.image||'')}" style="width:48px;height:48px;object-fit:cover;border-radius:8px;border:1px solid var(--border);${c.image?'':'display:none'}" onerror="this.style.display='none'">
+      <label class="btn sm ghost" style="cursor:pointer">Subir archivo<input type="file" accept="image/*" style="display:none" onchange="catImgFile(event)"></label>
+    </div>
     <label class="f"><span>Notas</span><textarea id="k_notes">${esc(c.notes||'')}</textarea></label>
     <div class="modal-actions"><button class="btn ghost" onclick="closeModal()">Cancelar</button>
       <button class="btn green" onclick="saveCatalog(${JSON.stringify(id||null)})">Guardar</button></div>`);
 }
+function catImgPreview(){ const v=$('k_image').value, im=$('k_imgprev'); if(!im) return; if(v){ im.src=v; im.style.display=''; } else im.style.display='none'; }
+function catImgFile(e){ const f=e.target.files[0]; if(!f) return; const rd=new FileReader(); rd.onload=()=>{ $('k_image').value=rd.result; catImgPreview(); }; rd.readAsDataURL(f); }
 async function saveCatalog(id){
   const b={name:$('k_name').value,cost_type:$('k_cost').value,category:'otro',unit:$('k_unit').value,unit_price:Number($('k_price').value||0),
-    coats:Number($('k_coats').value||2),paint_yield:$('k_yield').value===''?'':Number($('k_yield').value),notes:$('k_notes').value};
+    coats:Number($('k_coats').value||2),paint_yield:$('k_yield').value===''?'':Number($('k_yield').value),notes:$('k_notes').value,image:$('k_image').value};
   if(!b.name.trim()){ toast('El nombre es obligatorio',true); return; }
   try{ id?await api.send('PUT','/api/catalog/'+id,b):await api.send('POST','/api/catalog',b);
     S.catalog=await api.get('/api/catalog'); closeModal(); renderCatalog(); toast('Servicio guardado ✓'); }
   catch(e){ toast(e.message,true); }
+}
+function bulkImport(){
+  openModal(`<h3>📥 Importar lista de productos</h3>
+    <div class="hint" style="margin-bottom:10px">Un producto por línea, separado por “ | ”. Solo <b>nombre</b> y <b>precio</b> son obligatorios.<br>
+    Formato: <b>Nombre | precio | tipo | unidad | URL-foto</b></div>
+    <textarea id="bulk_text" style="min-height:180px;font-family:monospace;font-size:13px" placeholder="Galón pintura látex blanco | 28.50 | materiales | gal | https://sitio.com/foto.jpg
+Brocha 4 pulgadas | 6.90 | herramienta | und
+Mano de obra pintor por día | 35 | mano-obra | día
+Alquiler andamio | 25 | alquiler | día"></textarea>
+    <div class="hint" style="margin-top:8px">Tipos válidos: pintura · materiales · mano-obra · equipo · herramienta · alquiler</div>
+    <div class="modal-actions"><button class="btn ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn green" onclick="runBulkImport()">Importar</button></div>`);
+}
+function normType(s){ s=(s||'').toLowerCase().trim();
+  if(s.startsWith('pint')) return 'pintura';
+  if(s.startsWith('mat')) return 'materiales';
+  if(s.startsWith('mano')||s.includes('obra')) return 'mano-obra';
+  if(s.startsWith('equip')) return 'equipo';
+  if(s.startsWith('herr')) return 'herramienta';
+  if(s.startsWith('alq')) return 'alquiler';
+  return 'materiales';
+}
+async function runBulkImport(){
+  const lines=($('bulk_text').value||'').split('\n').map(l=>l.trim()).filter(Boolean);
+  let ok=0, fail=0;
+  for(const ln of lines){
+    const p=ln.split('|').map(x=>x.trim());
+    if(!p[0] || p[0].toLowerCase()==='nombre') continue;
+    const price=parseFloat((p[1]||'').replace(/[^0-9.,]/g,'').replace(',','.'));
+    const body={ name:p[0], unit_price:isFinite(price)?price:0, cost_type:normType(p[2]), unit:p[3]||'und', image:p[4]||'', category:'otro' };
+    try{ await api.send('POST','/api/catalog',body); ok++; }catch(e){ fail++; }
+  }
+  S.catalog=await api.get('/api/catalog'); closeModal(); renderCatalog();
+  toast(`Importados ${ok} producto${ok===1?'':'s'}${fail?` · ${fail} con error`:''} ✓`);
 }
 async function delCatalog(id){
   if(!confirm('¿Eliminar este servicio del catálogo?')) return;
