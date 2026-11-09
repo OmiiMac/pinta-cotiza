@@ -1,0 +1,28 @@
+===========================================================
+  MESHIPPING // TERMINAL  —  Cotizador de pintura
+  COMO ABRIR LA APP EN ESTA PC
+===========================================================
+
+IMPORTANTE: esta app NO se abre haciendo doble clic al archivo
+index.html. Necesita que el servidor este corriendo.
+
+PASO UNICO:
+
+   ->  Doble clic en   ABRIR-APP.bat
+
+Eso hace todo solo:
+  - La primera vez instala lo necesario (tarda un poco).
+  - Enciende el sistema.
+  - Abre tu navegador en http://localhost:3000
+
+Mientras uses la app, deja ABIERTA la ventana negra.
+Para apagar el sistema, cierra esa ventana negra.
+
+-----------------------------------------------------------
+Si doble clic no funciona, abre la terminal en esta carpeta y
+escribe:   npm start
+Luego entra manualmente a:   http://localhost:3000
+-----------------------------------------------------------
+Nota: cuando lo subamos a Railway, vas a poder abrirlo por una
+direccion web desde cualquier PC, sin encender nada.
+===========================================================
