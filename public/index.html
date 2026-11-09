@@ -92,6 +92,32 @@ main{max-width:1180px;margin:0 auto;padding:26px 22px 80px}
 .stat .k{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}
 .stat .v{font-family:'Orbitron',sans-serif;font-size:24px;margin-top:6px}
 .stat .v.sm{font-size:19px}
+.stat.clk{cursor:pointer;transition:.15s}
+.stat.clk:hover{border-color:var(--border2);box-shadow:var(--glow) rgba(136,108,255,.25);transform:translateY(-2px)}
+
+/* ---------- Dashboard interactivo ---------- */
+.dash-hello{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin:2px 0 16px}
+.dash-hello h1{font-family:'Orbitron',sans-serif;font-size:22px;margin:0;letter-spacing:.03em}
+.dash-hello .date{color:var(--muted);font-size:14px}
+.dash-search{position:relative;margin-bottom:14px}
+.dash-search input{width:100%;font-size:15px;padding:13px 16px}
+.quick-actions{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+.qa{display:flex;flex-direction:column;align-items:center;gap:8px;justify-content:center;padding:18px 10px;border-radius:14px;cursor:pointer;
+  background:var(--panel);border:1px solid var(--border);color:var(--text);font-weight:600;font-size:13.5px;font-family:inherit;transition:.15s}
+.qa:hover{border-color:var(--border2);box-shadow:var(--glow) rgba(136,108,255,.3);transform:translateY(-2px);color:#fff}
+.qa .qi{font-size:26px;filter:drop-shadow(0 0 8px rgba(136,108,255,.5))}
+.dash-mid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+.sbar{margin-bottom:12px;cursor:pointer}
+.sbar .st{display:flex;justify-content:space-between;align-items:center;font-size:13px;margin-bottom:5px}
+.sbar .st .cnt{color:var(--muted)}
+.sbar .track{height:12px;border-radius:999px;background:rgba(136,108,255,.12);overflow:hidden}
+.sbar .track span{display:block;height:100%;border-radius:999px;transition:width .5s}
+.sbar:hover .track{filter:brightness(1.15)}
+.pend-item{display:flex;align-items:center;gap:10px;padding:9px 11px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px;cursor:pointer;transition:.12s}
+.pend-item:hover{border-color:var(--cyan);background:rgba(47,230,255,.06)}
+.pend-item .pm{margin-left:auto;font-family:'Orbitron';color:var(--cyan2);font-size:13px}
+.continue-btn{display:inline-flex;align-items:center;gap:8px}
+@media(max-width:760px){ .dash-mid{grid-template-columns:1fr} .quick-actions{grid-template-columns:repeat(2,1fr)} }
 
 /* ---------- Buttons ---------- */
 .btn{
@@ -353,12 +379,32 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
 <main>
   <!-- DASHBOARD -->
   <section class="view active" id="view-dash">
-    <div class="page-head"><h1>Panel</h1>
-      <div class="spacer"></div>
-      <button class="btn primary" onclick="newQuote()">+ Nueva cotización</button>
+    <div id="dashHello"></div>
+    <div class="dash-search">
+      <input id="globalSearch" placeholder="🔎 Buscar cliente, cotización o producto…" autocomplete="off"
+             oninput="globalSearch(this.value)" onfocus="globalSearch(this.value)"
+             onblur="setTimeout(()=>{const b=document.getElementById('globalResults'); if(b)b.classList.remove('show')},180)">
+      <div id="globalResults" class="prod-results"></div>
+    </div>
+    <div class="quick-actions">
+      <button class="qa" onclick="newQuote()"><span class="qi">🧾</span><span>Nueva cotización</span></button>
+      <button class="qa" onclick="newPlan()"><span class="qi">📐</span><span>Nuevo plano</span></button>
+      <button class="qa" onclick="editClient()"><span class="qi">👤</span><span>Nuevo cliente</span></button>
+      <button class="qa" onclick="go('catalog')"><span class="qi">🔎</span><span>Catálogo</span></button>
     </div>
     <div class="grid stats" id="statCards"></div>
-    <div class="panel" style="margin-top:18px">
+    <div class="dash-mid">
+      <div class="panel">
+        <h3 class="mono" style="margin:0 0 14px;font-size:15px">Cotizaciones por estado</h3>
+        <div id="statusChart"></div>
+      </div>
+      <div class="panel">
+        <div style="display:flex;align-items:center;margin-bottom:12px"><h3 class="mono" style="margin:0;font-size:15px">📨 Por dar seguimiento</h3>
+          <span class="hint" style="margin:0 0 0 10px">enviadas sin respuesta</span></div>
+        <div id="pendingList"></div>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:16px">
       <div style="display:flex;align-items:center;margin-bottom:14px"><h3 class="mono" style="margin:0;font-size:15px">Últimas cotizaciones</h3>
         <button class="btn sm ghost" style="margin-left:auto" onclick="go('quotes')">Ver todas →</button></div>
       <div id="recentQuotes"></div>
@@ -663,20 +709,68 @@ async function boot(){
 // ============================================================
 // DASHBOARD
 // ============================================================
+let _dashCards=[];
 async function renderDash(){
   try{ S.quotes = await api.get('/api/quotes'); }catch(e){}
   const sum = await api.get('/api/summary').catch(()=>null);
   const byStatus = {}; (sum?.byStatus||[]).forEach(s=>byStatus[s.status]=s);
-  const cards=[
-    {k:'Cotizaciones', v:sum?.totals.n??0},
-    {k:'Monto total', v:money(sum?.totals.monto||0), sm:true},
-    {k:'Aprobadas', v:byStatus.aprobada?.n||0},
-    {k:'Monto aprobado', v:money(byStatus.aprobada?.monto||0), sm:true},
-    {k:'Clientes', v:sum?.clients??0},
+
+  // 7) Saludo + fecha + continuar trabajo
+  const h=new Date().getHours();
+  const saludo = h<12?'Buenos días':(h<19?'Buenas tardes':'Buenas noches');
+  let hoy=new Date().toLocaleDateString('es-PA',{weekday:'long',day:'numeric',month:'long'}); hoy=hoy.charAt(0).toUpperCase()+hoy.slice(1);
+  const nEdit=(S.editing&&S.editing.items)?S.editing.items.filter(it=>it.description||it.unit_price).length:0;
+  const hello=$('dashHello'); hello.className='dash-hello';
+  hello.innerHTML=`<div><h1>${saludo} 👋</h1><div class="date">${hoy}</div></div>
+    <div class="spacer" style="margin-left:auto"></div>
+    ${nEdit?`<button class="btn primary continue-btn" onclick="openCurrentQuote()">▶ Continuar cotización (${nEdit})</button>`:''}`;
+
+  // 1) Tarjetas clicables
+  _dashCards=[
+    {k:'Cotizaciones', v:sum?.totals.n??0, go:()=>go('quotes')},
+    {k:'Monto total', v:money(sum?.totals.monto||0), sm:true, go:()=>go('quotes')},
+    {k:'Aprobadas', v:byStatus.aprobada?.n||0, go:()=>filterQuotes('aprobada')},
+    {k:'Monto aprobado', v:money(byStatus.aprobada?.monto||0), sm:true, go:()=>filterQuotes('aprobada')},
+    {k:'Clientes', v:sum?.clients??0, go:()=>go('clients')},
   ];
-  $('statCards').innerHTML = cards.map(c=>`<div class="stat"><div class="k">${c.k}</div><div class="v ${c.sm?'sm':''}">${c.v}</div></div>`).join('');
-  const recent = S.quotes.slice(0,6);
+  $('statCards').innerHTML = _dashCards.map((c,i)=>`<div class="stat clk" onclick="_dashCards[${i}].go()"><div class="k">${c.k}</div><div class="v ${c.sm?'sm':''}">${c.v}</div></div>`).join('');
+
+  // 2) Gráfica por estado (clicable)
+  const order=[['borrador','Borrador','var(--muted)'],['enviada','Enviada','var(--cyan)'],['aprobada','Aprobada','var(--green)'],['rechazada','Rechazada','var(--danger)']];
+  const maxN=Math.max(1,...order.map(([k])=>byStatus[k]?.n||0));
+  $('statusChart').innerHTML = order.map(([k,lbl,col])=>{ const n=byStatus[k]?.n||0, mo=byStatus[k]?.monto||0, w=Math.round((n/maxN)*100);
+    return `<div class="sbar" onclick="filterQuotes('${k}')"><div class="st"><span>${lbl}</span><span class="cnt">${n} · ${money(mo)}</span></div>
+      <div class="track"><span style="width:${n?Math.max(w,6):0}%;background:${col}"></span></div></div>`; }).join('');
+
+  // 5) Pendientes de seguimiento (enviadas)
+  const pend=S.quotes.filter(q=>q.status==='enviada').slice(0,6);
+  $('pendingList').innerHTML = pend.length ? pend.map(q=>`<div class="pend-item" onclick="openQuote('${q.id}')">
+      <span class="mono" style="color:var(--cyan2)">${esc(q.number||'—')}</span>
+      <span style="color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(q.client_name||'—')}</span>
+      <span class="pm">${money(q.total)}</span></div>`).join('')
+    : `<div class="hint" style="margin:0">Nada pendiente. Marca una cotización como <b>“enviada”</b> y aparece aquí para darle seguimiento.</div>`;
+
+  // Últimas
+  const recent=S.quotes.slice(0,6);
   $('recentQuotes').innerHTML = recent.length ? quoteTable(recent) : emptyBox('Aún no hay cotizaciones','Crea la primera con “Nueva cotización”.');
+}
+function filterQuotes(status){ const el=$('quoteSearch'); if(el) el.value=status; go('quotes'); }
+// 6) Buscador global del inicio
+function hideGlobal(){ const b=$('globalResults'); if(b) b.classList.remove('show'); }
+function gsGo(id,kind){ hideGlobal(); const inp=$('globalSearch'); if(inp) inp.value='';
+  if(kind==='quote') openQuote(id); else if(kind==='client') editClient(id); else if(kind==='prod') addToCurrentQuote(id); }
+function globalSearch(q){
+  const box=$('globalResults'); if(!box) return; q=(q||'').toLowerCase().trim();
+  if(!q){ box.classList.remove('show'); box.innerHTML=''; return; }
+  const out=[];
+  S.quotes.filter(x=>[x.number,x.client_name,x.title].some(f=>String(f||'').toLowerCase().includes(q))).slice(0,5)
+    .forEach(x=>out.push(`<div class="pr-item" onmousedown="gsGo('${x.id}','quote')"><span>🧾 <b>${esc(x.number||'—')}</b> <span class="tag">${esc(x.client_name||'')}</span></span><span class="mono" style="color:var(--cyan2)">${money(x.total)}</span></div>`));
+  S.clients.filter(x=>[x.name,x.phone,x.email].some(f=>String(f||'').toLowerCase().includes(q))).slice(0,4)
+    .forEach(x=>out.push(`<div class="pr-item" onmousedown="gsGo('${x.id}','client')"><span>👤 <b>${esc(x.name)}</b></span><span class="tag">${esc(x.phone||'')}</span></div>`));
+  S.catalog.filter(x=>String(x.name||'').toLowerCase().includes(q)).slice(0,5)
+    .forEach(x=>out.push(`<div class="pr-item" onmousedown="gsGo('${x.id}','prod')"><span>${x.image?`<img src="${esc(x.image)}" style="width:24px;height:24px;object-fit:cover;border-radius:4px;vertical-align:middle;margin-right:5px">`:(COST_ICON[x.cost_type]||'•')} <b>${esc(x.name)}</b> <span class="tag">${COST_LBL[x.cost_type]||''}</span></span><span class="mono" style="color:var(--cyan2)">${money(x.unit_price)}</span></div>`));
+  box.innerHTML = out.length?out.join(''):'<div class="pr-empty">Sin resultados para “'+esc(q)+'”</div>';
+  box.classList.add('show');
 }
 
 function emptyBox(t,s){ return `<div class="empty"><div class="big">◇</div><div style="font-size:17px;color:var(--text)">${esc(t)}</div><div style="margin-top:6px">${esc(s||'')}</div></div>`; }
