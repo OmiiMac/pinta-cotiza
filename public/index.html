@@ -1,0 +1,816 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MESHIPPING // TERMINAL — Cotizador</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#070615; --bg2:#0c0a24; --bg3:#120f30;
+  --panel:rgba(20,17,52,.72); --panel2:rgba(28,23,70,.55);
+  --border:rgba(136,108,255,.28); --border2:rgba(136,108,255,.5);
+  --cyan:#2fe6ff; --cyan2:#7df9ff; --violet:#a855f7; --magenta:#d946ef;
+  --green:#19f7a4; --blue:#5a6bff; --text:#e9ecff; --muted:#9aa0cf; --muted2:#6f74a3;
+  --danger:#ff5d7a; --warn:#ffcf5a; --ok:#19f7a4;
+  --radius:14px; --glow:0 0 22px;
+  --grad:linear-gradient(135deg,var(--violet),var(--cyan));
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:
+    radial-gradient(1100px 700px at 15% -10%, rgba(120,70,255,.22), transparent 60%),
+    radial-gradient(900px 600px at 95% 0%, rgba(47,230,255,.14), transparent 55%),
+    radial-gradient(700px 600px at 50% 120%, rgba(25,247,164,.10), transparent 60%),
+    var(--bg);
+  color:var(--text); font-family:'Space Grotesk',system-ui,sans-serif; font-size:15px;
+  min-height:100vh;
+}
+a{color:var(--cyan);text-decoration:none}
+button{font-family:inherit}
+.mono{font-family:'Orbitron',sans-serif;letter-spacing:.06em}
+
+/* ---------- Top bar ---------- */
+header.topbar{
+  position:sticky;top:0;z-index:40;
+  display:flex;align-items:center;gap:18px;
+  padding:12px 22px;
+  background:rgba(7,6,21,.82);backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--border);
+}
+.brand{display:flex;align-items:center;gap:12px;cursor:pointer;user-select:none}
+.brand .cube{
+  width:40px;height:40px;flex:none;border-radius:10px;position:relative;
+  background:linear-gradient(135deg,#7b2ff7,#c026d3);
+  box-shadow:0 0 18px rgba(168,85,247,.7), inset 0 0 12px rgba(255,255,255,.25);
+  display:grid;place-items:center;
+}
+.brand .cube svg{filter:drop-shadow(0 0 6px rgba(25,247,164,.9))}
+.brand .wm{line-height:1}
+.brand .wm b{
+  display:block;font-family:'Orbitron',sans-serif;font-weight:900;font-size:16px;letter-spacing:.12em;
+  color:var(--cyan2);text-shadow:0 0 10px rgba(47,230,255,.7);
+}
+.brand .wm span{display:block;font-family:'Orbitron',sans-serif;font-weight:700;font-size:10.5px;letter-spacing:.42em;color:var(--violet);text-shadow:0 0 8px rgba(168,85,247,.6)}
+nav.tabs{display:flex;gap:6px;margin-left:auto;flex-wrap:wrap}
+nav.tabs button{
+  background:transparent;border:1px solid transparent;color:var(--muted);
+  padding:9px 15px;border-radius:10px;cursor:pointer;font-weight:600;font-size:14px;transition:.15s;
+}
+nav.tabs button:hover{color:var(--text);background:var(--panel2)}
+nav.tabs button.active{
+  color:#fff;border-color:var(--border2);
+  background:linear-gradient(135deg,rgba(168,85,247,.25),rgba(47,230,255,.18));
+  box-shadow:var(--glow) rgba(136,108,255,.35);
+}
+
+/* ---------- Layout ---------- */
+main{max-width:1180px;margin:0 auto;padding:26px 22px 80px}
+.view{display:none;animation:fade .25s ease}
+.view.active{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.page-head{display:flex;align-items:center;gap:14px;margin:4px 0 22px}
+.page-head h1{font-family:'Orbitron',sans-serif;font-size:22px;margin:0;letter-spacing:.04em}
+.page-head .spacer{margin-left:auto}
+
+/* ---------- Cards / panels ---------- */
+.panel{
+  background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
+  padding:20px;backdrop-filter:blur(8px);
+}
+.panel+.panel{margin-top:18px}
+.grid{display:grid;gap:16px}
+.stats{grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}
+.stat{
+  background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;
+  position:relative;overflow:hidden;
+}
+.stat::before{content:"";position:absolute;inset:0 auto 0 0;width:3px;background:var(--grad)}
+.stat .k{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}
+.stat .v{font-family:'Orbitron',sans-serif;font-size:24px;margin-top:6px}
+.stat .v.sm{font-size:19px}
+
+/* ---------- Buttons ---------- */
+.btn{
+  display:inline-flex;align-items:center;gap:8px;justify-content:center;
+  border:1px solid var(--border2);background:var(--panel2);color:var(--text);
+  padding:10px 16px;border-radius:10px;cursor:pointer;font-weight:600;font-size:14px;transition:.15s;
+}
+.btn:hover{border-color:var(--cyan);box-shadow:var(--glow) rgba(47,230,255,.25)}
+.btn.primary{
+  border:none;color:#0a0820;font-weight:700;
+  background:linear-gradient(135deg,var(--cyan),var(--violet));
+  box-shadow:var(--glow) rgba(136,108,255,.5);
+}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.green{border:none;color:#04150e;background:linear-gradient(135deg,var(--green),#13d6ff);box-shadow:var(--glow) rgba(25,247,164,.45)}
+.btn.ghost{background:transparent}
+.btn.sm{padding:6px 11px;font-size:13px}
+.btn.danger{border-color:rgba(255,93,122,.5);color:var(--danger)}
+.btn.danger:hover{box-shadow:var(--glow) rgba(255,93,122,.35);border-color:var(--danger)}
+.btn.icon{padding:7px 9px}
+
+/* ---------- Forms ---------- */
+label.f{display:block;margin-bottom:12px}
+label.f > span{display:block;font-size:12px;color:var(--muted);margin-bottom:5px;letter-spacing:.04em}
+input,select,textarea{
+  width:100%;background:rgba(8,7,24,.7);border:1px solid var(--border);border-radius:9px;
+  color:var(--text);padding:10px 12px;font-family:inherit;font-size:14px;transition:.15s;
+}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--cyan);box-shadow:0 0 0 3px rgba(47,230,255,.12)}
+textarea{resize:vertical;min-height:70px}
+select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);background-position:calc(100% - 18px) 55%,calc(100% - 13px) 55%;background-size:5px 5px,5px 5px;background-repeat:no-repeat}
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:0 18px}
+
+/* ---------- Tables ---------- */
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{
+  text-align:left;font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);
+  padding:10px 12px;border-bottom:1px solid var(--border);font-weight:600;
+}
+.tbl td{padding:12px;border-bottom:1px solid rgba(136,108,255,.12);vertical-align:middle}
+.tbl tr:hover td{background:rgba(136,108,255,.06)}
+.tbl .num{text-align:right;font-variant-numeric:tabular-nums}
+.linklike{cursor:pointer;color:var(--cyan2);font-weight:600}
+.linklike:hover{text-decoration:underline}
+
+/* ---------- Chips / badges ---------- */
+.badge{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:600;border:1px solid}
+.badge.borrador{color:var(--muted);border-color:var(--border2);background:var(--panel2)}
+.badge.enviada{color:var(--cyan);border-color:rgba(47,230,255,.5);background:rgba(47,230,255,.08)}
+.badge.aprobada{color:var(--green);border-color:rgba(25,247,164,.5);background:rgba(25,247,164,.08)}
+.badge.rechazada{color:var(--danger);border-color:rgba(255,93,122,.5);background:rgba(255,93,122,.08)}
+.tag{display:inline-block;padding:3px 9px;border-radius:7px;font-size:11.5px;background:var(--panel2);border:1px solid var(--border);color:var(--muted)}
+
+/* ---------- Items editor ---------- */
+.item-row{border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px;background:var(--panel2)}
+.item-row .top{display:flex;gap:10px;align-items:flex-start}
+.item-row .top .desc{flex:1}
+.area-fields{display:none;gap:0 12px;margin-top:10px;grid-template-columns:repeat(auto-fit,minmax(110px,1fr))}
+.item-row.is-area .area-fields{display:grid}
+.item-row.is-area .manual-qty{display:none}
+.item-foot{display:flex;align-items:center;gap:14px;margin-top:10px;flex-wrap:wrap}
+.item-foot .ln{margin-left:auto;font-family:'Orbitron',sans-serif;font-size:16px;color:var(--cyan2)}
+.mat-hint{font-size:12px;color:var(--green);background:rgba(25,247,164,.07);border:1px solid rgba(25,247,164,.25);padding:3px 9px;border-radius:7px}
+.switch{display:inline-flex;align-items:center;gap:7px;font-size:13px;color:var(--muted);cursor:pointer;user-select:none}
+.switch input{width:auto;margin:0}
+
+/* ---------- Totals box ---------- */
+.totals{margin-left:auto;max-width:360px}
+.totals .row{display:flex;justify-content:space-between;padding:7px 0;color:var(--muted)}
+.totals .row.grand{border-top:1px solid var(--border2);margin-top:6px;padding-top:12px;color:var(--text)}
+.totals .row.grand b{font-family:'Orbitron',sans-serif;font-size:22px;color:var(--cyan2)}
+
+/* ---------- Materials panel ---------- */
+.mat-list{display:grid;gap:8px}
+.mat-item{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border:1px solid rgba(25,247,164,.25);border-radius:10px;background:rgba(25,247,164,.05)}
+.mat-item b{font-family:'Orbitron',sans-serif;color:var(--green)}
+
+/* ---------- Empty / toast / modal ---------- */
+.empty{text-align:center;padding:50px 20px;color:var(--muted)}
+.empty .big{font-size:40px;margin-bottom:10px;opacity:.6}
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(140%);z-index:100;
+  background:var(--bg3);border:1px solid var(--border2);padding:13px 20px;border-radius:12px;
+  box-shadow:var(--glow) rgba(136,108,255,.4);transition:.3s;font-weight:600}
+#toast.show{transform:translateX(-50%) translateY(0)}
+#toast.err{border-color:var(--danger);box-shadow:var(--glow) rgba(255,93,122,.4)}
+.overlay{position:fixed;inset:0;background:rgba(4,3,14,.7);backdrop-filter:blur(4px);z-index:60;display:none;align-items:flex-start;justify-content:center;padding:40px 16px;overflow:auto}
+.overlay.show{display:flex}
+.modal{width:100%;max-width:560px;background:var(--bg2);border:1px solid var(--border2);border-radius:16px;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.modal h3{font-family:'Orbitron',sans-serif;margin:0 0 18px}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:8px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:0 16px}
+.hint{font-size:12px;color:var(--muted2);margin-top:-6px;margin-bottom:12px}
+
+/* ---------- Print ---------- */
+.print-only{display:none}
+@media print{
+  body{background:#fff;color:#111}
+  header.topbar,nav.tabs,.no-print,#toast,.overlay{display:none !important}
+  main{max-width:none;padding:0}
+  .view{display:none !important}
+  #printArea{display:block !important}
+}
+#printArea{display:none}
+
+@media(max-width:720px){
+  nav.tabs{order:3;width:100%;margin:8px 0 0}
+  .brand .wm b{font-size:14px}
+  main{padding:18px 14px 70px}
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand" onclick="go('dash')">
+    <div class="cube">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 12h12m0 0l-5-5m5 5l-5 5" stroke="#19f7a4" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <div class="wm">
+      <b>MESHIPPING</b><span>// TERMINAL</span>
+    </div>
+  </div>
+  <nav class="tabs" id="tabs">
+    <button data-v="dash" class="active">Inicio</button>
+    <button data-v="quotes">Cotizaciones</button>
+    <button data-v="clients">Clientes</button>
+    <button data-v="catalog">Catálogo</button>
+    <button data-v="settings">Ajustes</button>
+  </nav>
+</header>
+
+<main>
+  <!-- DASHBOARD -->
+  <section class="view active" id="view-dash">
+    <div class="page-head"><h1>Panel</h1>
+      <div class="spacer"></div>
+      <button class="btn primary" onclick="newQuote()">+ Nueva cotización</button>
+    </div>
+    <div class="grid stats" id="statCards"></div>
+    <div class="panel" style="margin-top:18px">
+      <div style="display:flex;align-items:center;margin-bottom:14px"><h3 class="mono" style="margin:0;font-size:15px">Últimas cotizaciones</h3>
+        <button class="btn sm ghost" style="margin-left:auto" onclick="go('quotes')">Ver todas →</button></div>
+      <div id="recentQuotes"></div>
+    </div>
+  </section>
+
+  <!-- QUOTES LIST -->
+  <section class="view" id="view-quotes">
+    <div class="page-head"><h1>Cotizaciones</h1>
+      <div class="spacer"></div>
+      <input id="quoteSearch" placeholder="Buscar..." style="width:200px" oninput="renderQuotes()">
+      <button class="btn primary" onclick="newQuote()">+ Nueva</button>
+    </div>
+    <div class="panel"><div id="quotesList"></div></div>
+  </section>
+
+  <!-- QUOTE EDITOR -->
+  <section class="view" id="view-editor">
+    <div class="page-head">
+      <button class="btn ghost sm" onclick="go('quotes')">← Volver</button>
+      <h1 id="editorTitle">Nueva cotización</h1>
+      <span id="editorNumber" class="tag mono"></span>
+      <span id="editorStatus"></span>
+      <div class="spacer"></div>
+      <button class="btn sm" onclick="printQuote()">🖨 Imprimir / PDF</button>
+      <button class="btn green" onclick="saveQuote()">Guardar</button>
+    </div>
+
+    <div class="panel">
+      <div class="form-grid">
+        <label class="f"><span>Cliente</span>
+          <select id="q_client"></select>
+        </label>
+        <label class="f"><span>Título / Proyecto</span>
+          <input id="q_title" placeholder="Ej: Pintura interior residencia Costa del Este">
+        </label>
+        <label class="f"><span>Fecha</span><input type="date" id="q_issue"></label>
+        <label class="f"><span>Válida hasta</span><input type="date" id="q_valid"></label>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div style="display:flex;align-items:center;margin-bottom:14px">
+        <h3 class="mono" style="margin:0;font-size:15px">Partidas</h3>
+        <div class="spacer" style="margin-left:auto"></div>
+        <button class="btn sm" onclick="addItem()">+ Partida</button>
+        <button class="btn sm ghost" onclick="openCatalogPicker()">+ Desde catálogo</button>
+      </div>
+      <div id="itemsWrap"></div>
+    </div>
+
+    <div class="panel grid" style="grid-template-columns:1fr 340px;align-items:start">
+      <div>
+        <label class="f"><span>Notas / alcance</span><textarea id="q_notes" placeholder="Detalles del trabajo, condiciones, exclusiones..."></textarea></label>
+        <label class="f"><span>Términos y condiciones</span><textarea id="q_terms"></textarea></label>
+      </div>
+      <div>
+        <div class="row2">
+          <label class="f"><span>Descuento</span>
+            <select id="q_disc_type" onchange="recalc()">
+              <option value="none">Sin descuento</option>
+              <option value="percent">Porcentaje %</option>
+              <option value="amount">Monto fijo</option>
+            </select>
+          </label>
+          <label class="f"><span>Valor desc.</span><input type="number" id="q_disc_val" value="0" min="0" step="0.01" oninput="recalc()"></label>
+        </div>
+        <label class="f"><span id="taxLabel">Impuesto %</span><input type="number" id="q_tax" value="7" min="0" step="0.01" oninput="recalc()"></label>
+        <div class="totals" style="max-width:none">
+          <div class="row"><span>Subtotal</span><span id="t_sub">$0.00</span></div>
+          <div class="row" id="t_disc_row" style="display:none"><span>Descuento</span><span id="t_disc">-$0.00</span></div>
+          <div class="row"><span id="t_tax_lbl">ITBMS</span><span id="t_tax">$0.00</span></div>
+          <div class="row grand"><span>TOTAL</span><b id="t_total">$0.00</b></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Materials estimate -->
+    <div class="panel" id="matPanel">
+      <div style="display:flex;align-items:center;margin-bottom:6px">
+        <h3 class="mono" style="margin:0;font-size:15px">🪣 Estimación de materiales (pintura)</h3>
+        <span class="hint" style="margin:0 0 0 12px">Basado en partidas por área, su rendimiento y nº de manos.</span>
+      </div>
+      <div id="matList" class="mat-list" style="margin-top:12px"></div>
+    </div>
+  </section>
+
+  <!-- CLIENTS -->
+  <section class="view" id="view-clients">
+    <div class="page-head"><h1>Clientes</h1><div class="spacer"></div>
+      <button class="btn primary" onclick="editClient()">+ Nuevo cliente</button></div>
+    <div class="panel"><div id="clientsList"></div></div>
+  </section>
+
+  <!-- CATALOG -->
+  <section class="view" id="view-catalog">
+    <div class="page-head"><h1>Catálogo de precios</h1><div class="spacer"></div>
+      <button class="btn primary" onclick="editCatalog()">+ Nuevo servicio</button></div>
+    <div class="hint" style="margin-bottom:14px">Servicios y precios que reutilizas al armar cotizaciones. El rendimiento (m²/galón) sirve para estimar materiales.</div>
+    <div class="panel"><div id="catalogList"></div></div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section class="view" id="view-settings">
+    <div class="page-head"><h1>Ajustes</h1><div class="spacer"></div>
+      <button class="btn green" onclick="saveSettings()">Guardar ajustes</button></div>
+    <div class="panel">
+      <h3 class="mono" style="margin:0 0 14px;font-size:15px">Empresa</h3>
+      <div class="form-grid">
+        <label class="f"><span>Nombre</span><input id="s_company_name"></label>
+        <label class="f"><span>Eslogan</span><input id="s_company_tagline"></label>
+        <label class="f"><span>Teléfono</span><input id="s_company_phone"></label>
+        <label class="f"><span>Email</span><input id="s_company_email"></label>
+        <label class="f" style="grid-column:1/-1"><span>Dirección</span><input id="s_company_address"></label>
+      </div>
+      <label class="f"><span>Logo (URL o data URL — opcional)</span><input id="s_company_logo" placeholder="Pega el PNG como data URL o deja vacío para usar el wordmark"></label>
+      <div class="hint">Para usar el logo real: colócalo en <b>public/</b> (ej. <code>logo.png</code>) y escribe aquí <code>/logo.png</code>.</div>
+    </div>
+    <div class="panel">
+      <h3 class="mono" style="margin:0 0 14px;font-size:15px">Cotizaciones</h3>
+      <div class="form-grid">
+        <label class="f"><span>Símbolo moneda</span><input id="s_currency_symbol"></label>
+        <label class="f"><span>Nombre impuesto</span><input id="s_tax_name"></label>
+        <label class="f"><span>Impuesto % por defecto</span><input type="number" id="s_tax_rate" step="0.01"></label>
+        <label class="f"><span>Prefijo nº</span><input id="s_quote_prefix"></label>
+        <label class="f"><span>Validez (días)</span><input type="number" id="s_validity_days"></label>
+        <label class="f"><span>Manos por defecto</span><input type="number" id="s_default_coats"></label>
+        <label class="f"><span>Rendimiento m²/galón</span><input type="number" id="s_default_yield"></label>
+      </div>
+      <label class="f"><span>Términos por defecto</span><textarea id="s_default_terms"></textarea></label>
+    </div>
+  </section>
+</main>
+
+<!-- PRINT AREA -->
+<div id="printArea"></div>
+
+<!-- Generic modal -->
+<div class="overlay" id="overlay"><div class="modal" id="modal"></div></div>
+<div id="toast"></div>
+
+<script>
+// ============================================================
+// API helper
+// ============================================================
+const api = {
+  async get(u){ return handle(await fetch(u)); },
+  async send(m,u,b){ return handle(await fetch(u,{method:m,headers:{'Content-Type':'application/json'},body:JSON.stringify(b||{})})); },
+};
+async function handle(r){ const d = await r.json().catch(()=>({})); if(!r.ok) throw new Error(d.error||('Error '+r.status)); return d; }
+
+// ============================================================
+// State
+// ============================================================
+let S = { settings:{}, clients:[], catalog:[], quotes:[], editing:null };
+const $ = (id)=>document.getElementById(id);
+const esc = (s)=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const sym = ()=>S.settings.currency_symbol||'$';
+const money = (n)=>sym()+Number(n||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+const taxName = ()=>S.settings.tax_name||'ITBMS';
+
+function toast(msg,isErr){ const t=$('toast'); t.textContent=msg; t.className='show'+(isErr?' err':''); setTimeout(()=>t.className='',2600); }
+function fmtDate(d){ if(!d) return ''; const [y,m,day]=String(d).slice(0,10).split('-'); return day+'/'+m+'/'+y; }
+
+// ============================================================
+// Router
+// ============================================================
+function go(v){
+  document.querySelectorAll('.view').forEach(e=>e.classList.remove('active'));
+  $('view-'+v).classList.add('active');
+  document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('active', b.dataset.v===v));
+  window.scrollTo(0,0);
+  if(v==='dash') renderDash();
+  if(v==='quotes') renderQuotes();
+  if(v==='clients') renderClients();
+  if(v==='catalog') renderCatalog();
+  if(v==='settings') fillSettings();
+}
+document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>go(b.dataset.v));
+
+// ============================================================
+// Load
+// ============================================================
+async function boot(){
+  try{
+    const [settings,clients,catalog,quotes] = await Promise.all([
+      api.get('/api/settings'), api.get('/api/clients'), api.get('/api/catalog'), api.get('/api/quotes')
+    ]);
+    S.settings=settings; S.clients=clients; S.catalog=catalog; S.quotes=quotes;
+    renderDash();
+  }catch(e){ toast(e.message,true); }
+}
+
+// ============================================================
+// DASHBOARD
+// ============================================================
+async function renderDash(){
+  try{ S.quotes = await api.get('/api/quotes'); }catch(e){}
+  const sum = await api.get('/api/summary').catch(()=>null);
+  const byStatus = {}; (sum?.byStatus||[]).forEach(s=>byStatus[s.status]=s);
+  const cards=[
+    {k:'Cotizaciones', v:sum?.totals.n??0},
+    {k:'Monto total', v:money(sum?.totals.monto||0), sm:true},
+    {k:'Aprobadas', v:byStatus.aprobada?.n||0},
+    {k:'Monto aprobado', v:money(byStatus.aprobada?.monto||0), sm:true},
+    {k:'Clientes', v:sum?.clients??0},
+  ];
+  $('statCards').innerHTML = cards.map(c=>`<div class="stat"><div class="k">${c.k}</div><div class="v ${c.sm?'sm':''}">${c.v}</div></div>`).join('');
+  const recent = S.quotes.slice(0,6);
+  $('recentQuotes').innerHTML = recent.length ? quoteTable(recent) : emptyBox('Aún no hay cotizaciones','Crea la primera con “Nueva cotización”.');
+}
+
+function emptyBox(t,s){ return `<div class="empty"><div class="big">◇</div><div style="font-size:17px;color:var(--text)">${esc(t)}</div><div style="margin-top:6px">${esc(s||'')}</div></div>`; }
+
+// ============================================================
+// QUOTES
+// ============================================================
+function statusBadge(s){ return `<span class="badge ${s}">${esc(s)}</span>`; }
+function quoteTable(list){
+  return `<table class="tbl"><thead><tr>
+    <th>Nº</th><th>Cliente</th><th>Título</th><th>Fecha</th><th>Estado</th><th class="num">Total</th><th></th>
+    </tr></thead><tbody>${list.map(q=>`<tr>
+      <td><span class="linklike mono" onclick="openQuote('${q.id}')">${esc(q.number||'—')}</span></td>
+      <td>${esc(q.client_name||'—')}</td>
+      <td>${esc(q.title||'')}</td>
+      <td>${fmtDate(q.issue_date)}</td>
+      <td>${statusBadge(q.status)}</td>
+      <td class="num mono">${money(q.total)}</td>
+      <td class="num"><button class="btn sm ghost" onclick="openQuote('${q.id}')">Abrir</button></td>
+    </tr>`).join('')}</tbody></table>`;
+}
+async function renderQuotes(){
+  try{ S.quotes = await api.get('/api/quotes'); }catch(e){}
+  const q=($('quoteSearch')?.value||'').toLowerCase();
+  let list=S.quotes;
+  if(q) list=list.filter(x=>[x.number,x.client_name,x.title,x.status].some(f=>String(f||'').toLowerCase().includes(q)));
+  $('quotesList').innerHTML = list.length ? quoteTable(list) : emptyBox('Sin resultados');
+}
+
+// ============================================================
+// QUOTE EDITOR
+// ============================================================
+function clientOptions(sel){
+  return '<option value="">— Sin cliente —</option>'+S.clients.map(c=>`<option value="${c.id}" ${c.id===sel?'selected':''}>${esc(c.name)}</option>`).join('');
+}
+function blankItem(){ return { id:null, category:'pintura-interior', description:'', unit:'m2', is_area:1, width:0, height:0, qcount:1, deduction:0, qty:0, unit_price:0, coats:Number(S.settings.default_coats||2), paint_yield:Number(S.settings.default_yield||35) }; }
+
+function newQuote(){
+  S.editing = {
+    id:null, number:'', client_id:'', title:'', status:'borrador',
+    issue_date:new Date().toISOString().slice(0,10),
+    valid_until:new Date(Date.now()+ (Number(S.settings.validity_days||15))*864e5).toISOString().slice(0,10),
+    tax_rate:Number(S.settings.tax_rate||7), discount_type:'none', discount_value:0,
+    notes:'', terms:S.settings.default_terms||'', items:[blankItem()]
+  };
+  fillEditor(); go('editor');
+}
+async function openQuote(id){
+  try{ S.editing = await api.get('/api/quotes/'+id); if(!S.editing.items.length) S.editing.items=[blankItem()]; fillEditor(); go('editor'); }
+  catch(e){ toast(e.message,true); }
+}
+function fillEditor(){
+  const q=S.editing;
+  $('editorTitle').textContent = q.id ? 'Editar cotización' : 'Nueva cotización';
+  $('editorNumber').textContent = q.number||'(se asigna al guardar)';
+  $('editorStatus').innerHTML = q.id ? statusSelector(q.status) : '';
+  $('q_client').innerHTML = clientOptions(q.client_id);
+  $('q_title').value=q.title||''; $('q_issue').value=(q.issue_date||'').slice(0,10);
+  $('q_valid').value=(q.valid_until||'').slice(0,10);
+  $('q_notes').value=q.notes||''; $('q_terms').value=q.terms||'';
+  $('q_disc_type').value=q.discount_type||'none'; $('q_disc_val').value=q.discount_value||0;
+  $('q_tax').value=q.tax_rate??7;
+  $('taxLabel').textContent=taxName()+' %'; $('t_tax_lbl').textContent=taxName();
+  renderItems();
+}
+function statusSelector(cur){
+  const opts=['borrador','enviada','aprobada','rechazada'];
+  return `<select onchange="changeStatus(this.value)" style="width:auto;display:inline-block;padding:6px 28px 6px 12px">
+    ${opts.map(o=>`<option value="${o}" ${o===cur?'selected':''}>${o}</option>`).join('')}</select>`;
+}
+async function changeStatus(v){
+  if(!S.editing.id) return;
+  try{ const q=await api.send('PATCH','/api/quotes/'+S.editing.id+'/status',{status:v}); S.editing.status=q.status; toast('Estado: '+v); }
+  catch(e){ toast(e.message,true); }
+}
+
+function renderItems(){
+  const cats=[['pintura-interior','Pintura interior'],['pintura-exterior','Pintura exterior'],['gypsum','Gypsum'],['remodelacion','Remodelación'],['otro','Otro']];
+  const units=['m2','ml','und','global'];
+  $('itemsWrap').innerHTML = S.editing.items.map((it,i)=>`
+    <div class="item-row ${it.is_area?'is-area':''}" data-i="${i}">
+      <div class="top">
+        <div class="desc">
+          <input placeholder="Descripción de la partida" value="${esc(it.description)}" oninput="itUpd(${i},'description',this.value)">
+        </div>
+        <button class="btn icon danger sm" title="Eliminar" onclick="rmItem(${i})">✕</button>
+      </div>
+      <div class="area-fields" style="margin-top:10px;display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:0 12px">
+        <label class="f"><span>Categoría</span><select onchange="itUpd(${i},'category',this.value)">${cats.map(c=>`<option value="${c[0]}" ${it.category===c[0]?'selected':''}>${c[1]}</option>`).join('')}</select></label>
+        <label class="f"><span>Ancho (m)</span><input type="number" step="0.01" min="0" value="${it.width||0}" oninput="itUpd(${i},'width',this.value)"></label>
+        <label class="f"><span>Alto (m)</span><input type="number" step="0.01" min="0" value="${it.height||0}" oninput="itUpd(${i},'height',this.value)"></label>
+        <label class="f"><span>Cantidad (paredes)</span><input type="number" step="1" min="1" value="${it.qcount||1}" oninput="itUpd(${i},'qcount',this.value)"></label>
+        <label class="f"><span>Descontar (m²)</span><input type="number" step="0.01" min="0" value="${it.deduction||0}" oninput="itUpd(${i},'deduction',this.value)" title="Puertas, ventanas, etc."></label>
+      </div>
+      <div class="manual-qty" style="margin-top:10px;display:${it.is_area?'none':'grid'};grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:0 12px">
+        <label class="f"><span>Categoría</span><select onchange="itUpd(${i},'category',this.value)">${cats.map(c=>`<option value="${c[0]}" ${it.category===c[0]?'selected':''}>${c[1]}</option>`).join('')}</select></label>
+        <label class="f"><span>Cantidad</span><input type="number" step="0.01" min="0" value="${it.qty||0}" oninput="itUpd(${i},'qty',this.value)"></label>
+        <label class="f"><span>Unidad</span><select onchange="itUpd(${i},'unit',this.value)">${units.map(u=>`<option ${it.unit===u?'selected':''}>${u}</option>`).join('')}</select></label>
+      </div>
+      <div class="item-foot">
+        <label class="switch"><input type="checkbox" ${it.is_area?'checked':''} onchange="itUpd(${i},'is_area',this.checked?1:0)"> Calcular por área (m²)</label>
+        <label style="display:flex;align-items:center;gap:7px;font-size:13px;color:var(--muted)">P. unit. <input type="number" step="0.01" min="0" style="width:100px" value="${it.unit_price||0}" oninput="itUpd(${i},'unit_price',this.value)"></label>
+        ${it.is_area?`<label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)">Manos <input type="number" step="1" min="1" style="width:60px" value="${it.coats||2}" oninput="itUpd(${i},'coats',this.value)"></label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)">m²/gal <input type="number" step="1" min="1" style="width:66px" value="${it.paint_yield||35}" oninput="itUpd(${i},'paint_yield',this.value)"></label>`:''}
+        <span class="mat-hint" id="itmeta-${i}"></span>
+        <span class="ln" id="itln-${i}">${money(lineTotal(it))}</span>
+      </div>
+    </div>`).join('') || emptyBox('Sin partidas','Agrega una con “+ Partida”.');
+  recalc();
+}
+function itemQty(it){
+  if(it.is_area){ const a=(+it.width||0)*(+it.height||0)*(+it.qcount||1); return Math.max(0, a-(+it.deduction||0)); }
+  return +it.qty||0;
+}
+function lineTotal(it){ return Math.round(itemQty(it)*(+it.unit_price||0)*100)/100; }
+function itUpd(i,k,v){
+  const it=S.editing.items[i];
+  if(['width','height','qcount','deduction','qty','unit_price','coats','paint_yield'].includes(k)) v=v===''?0:Number(v);
+  it[k]=v;
+  if(k==='is_area'){ renderItems(); return; }
+  $('itln-'+i).textContent=money(lineTotal(it));
+  recalc();
+}
+function addItem(){ S.editing.items.push(blankItem()); renderItems(); }
+function rmItem(i){ S.editing.items.splice(i,1); if(!S.editing.items.length) S.editing.items.push(blankItem()); renderItems(); }
+
+function recalc(){
+  const q=S.editing; if(!q) return;
+  q.discount_type=$('q_disc_type').value; q.discount_value=Number($('q_disc_val').value||0);
+  q.tax_rate=Number($('q_tax').value||0);
+  let sub=0; q.items.forEach((it,i)=>{ const lt=lineTotal(it); sub+=lt;
+    const el=$('itln-'+i); if(el) el.textContent=money(lt);
+    const meta=$('itmeta-'+i);
+    if(meta){ if(it.is_area){ const area=itemQty(it); const gal=galons(it); meta.textContent=`${area.toFixed(2)} m² · ${gal} gal`; meta.style.display=''; } else meta.style.display='none'; }
+  });
+  let disc=0;
+  if(q.discount_type==='percent') disc=sub*q.discount_value/100;
+  else if(q.discount_type==='amount') disc=q.discount_value;
+  disc=Math.min(disc,sub);
+  const taxable=sub-disc; const tax=taxable*q.tax_rate/100; const total=taxable+tax;
+  $('t_sub').textContent=money(sub);
+  $('t_disc_row').style.display = disc>0?'flex':'none';
+  $('t_disc').textContent='-'+money(disc);
+  $('t_tax_lbl').textContent=taxName();
+  $('t_tax').textContent=money(tax);
+  $('t_total').textContent=money(total);
+  renderMaterials();
+}
+function galons(it){ const area=itemQty(it); const y=+it.paint_yield||35; const coats=+it.coats||1; if(!area||!y) return 0; return Math.ceil(area*coats/y); }
+function renderMaterials(){
+  const groups={};
+  S.editing.items.forEach(it=>{ if(!it.is_area) return; const area=itemQty(it); if(area<=0) return;
+    const key=it.category||'otro'; groups[key]=groups[key]||{area:0,gal:0}; groups[key].area+=area; groups[key].gal+=galons(it); });
+  const names={'pintura-interior':'Pintura interior','pintura-exterior':'Pintura exterior','gypsum':'Gypsum','remodelacion':'Remodelación','otro':'Otro'};
+  const keys=Object.keys(groups);
+  $('matPanel').style.display = keys.length?'':'none';
+  $('matList').innerHTML = keys.map(k=>`<div class="mat-item"><span>${names[k]||k} · <span style="color:var(--muted)">${groups[k].area.toFixed(2)} m²</span></span><b>${groups[k].gal} galón${groups[k].gal===1?'':'es'}</b></div>`).join('');
+}
+
+async function saveQuote(){
+  const q=S.editing;
+  q.client_id=$('q_client').value; q.title=$('q_title').value;
+  q.issue_date=$('q_issue').value; q.valid_until=$('q_valid').value;
+  q.notes=$('q_notes').value; q.terms=$('q_terms').value;
+  q.discount_type=$('q_disc_type').value; q.discount_value=Number($('q_disc_val').value||0);
+  q.tax_rate=Number($('q_tax').value||0);
+  try{
+    const payload={...q, items:q.items};
+    const saved = q.id ? await api.send('PUT','/api/quotes/'+q.id,payload) : await api.send('POST','/api/quotes',payload);
+    S.editing=saved; if(!S.editing.items.length) S.editing.items=[blankItem()];
+    fillEditor(); toast('Cotización guardada ✓');
+    renderDash();
+  }catch(e){ toast(e.message,true); }
+}
+
+// ----- Catalog picker -----
+function openCatalogPicker(){
+  if(!S.catalog.length){ toast('Catálogo vacío. Agrega servicios primero.',true); return; }
+  const names={'pintura-interior':'Pintura int.','pintura-exterior':'Pintura ext.','gypsum':'Gypsum','remodelacion':'Remodelación','otro':'Otro'};
+  openModal(`<h3>Agregar desde catálogo</h3>
+    <div style="max-height:50vh;overflow:auto;display:grid;gap:8px">
+      ${S.catalog.map(c=>`<div class="mat-item" style="cursor:pointer;border-color:var(--border)" onclick="pickCatalog('${c.id}')">
+        <span><b style="color:var(--text)">${esc(c.name)}</b> <span class="tag">${names[c.category]||c.category||''}</span></span>
+        <span class="mono" style="color:var(--cyan2)">${money(c.unit_price)}/${esc(c.unit||'')}</span></div>`).join('')}
+    </div>
+    <div class="modal-actions"><button class="btn ghost" onclick="closeModal()">Cerrar</button></div>`);
+}
+function pickCatalog(id){
+  const c=S.catalog.find(x=>x.id===id); if(!c) return;
+  const it=blankItem();
+  it.description=c.name; it.category=c.category||'otro'; it.unit=c.unit||'m2';
+  it.unit_price=+c.unit_price||0; it.is_area=(c.unit==='m2')?1:0;
+  if(c.paint_yield) it.paint_yield=+c.paint_yield; if(c.coats) it.coats=+c.coats;
+  S.editing.items.push(it); closeModal(); renderItems(); toast('Partida agregada');
+}
+
+// ----- Print -----
+function printQuote(){
+  const q=S.editing; const c=S.clients.find(x=>x.id===$('q_client').value);
+  const st=S.settings;
+  recalc();
+  let sub=0; q.items.forEach(it=>sub+=lineTotal(it));
+  let disc=0; const dt=$('q_disc_type').value, dv=Number($('q_disc_val').value||0);
+  if(dt==='percent') disc=sub*dv/100; else if(dt==='amount') disc=dv; disc=Math.min(disc,sub);
+  const taxable=sub-disc, tax=taxable*Number($('q_tax').value||0)/100, total=taxable+tax;
+  const catName={'pintura-interior':'Pintura interior','pintura-exterior':'Pintura exterior','gypsum':'Gypsum','remodelacion':'Remodelación','otro':'Otro'};
+  const logo = st.company_logo ? `<img src="${esc(st.company_logo)}" style="max-height:70px">` :
+    `<div style="font-family:Orbitron,sans-serif"><div style="font-weight:900;font-size:22px;color:#111;letter-spacing:.08em">MESHIPPING</div><div style="font-weight:700;font-size:12px;letter-spacing:.4em;color:#7b2ff7">// TERMINAL</div></div>`;
+  $('printArea').innerHTML = `
+  <div style="font-family:'Space Grotesk',Arial,sans-serif;color:#111;padding:36px 40px;max-width:800px;margin:0 auto">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #7b2ff7;padding-bottom:16px">
+      <div>${logo}<div style="margin-top:8px;font-size:12px;color:#555">${esc(st.company_tagline||'')}</div></div>
+      <div style="text-align:right;font-size:12px;color:#555;line-height:1.6">
+        ${st.company_phone?'Tel: '+esc(st.company_phone)+'<br>':''}
+        ${st.company_email?esc(st.company_email)+'<br>':''}
+        ${st.company_address?esc(st.company_address):''}
+      </div>
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-top:22px">
+      <div>
+        <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.1em">Cotización para</div>
+        <div style="font-size:18px;font-weight:700;margin-top:4px">${esc(c?.name||'—')}</div>
+        <div style="font-size:13px;color:#555">${esc(c?.address||'')}</div>
+        <div style="font-size:13px;color:#555">${esc(c?.phone||'')} ${c?.email?'· '+esc(c.email):''}</div>
+      </div>
+      <div style="text-align:right;font-size:13px;line-height:1.7">
+        <div style="font-size:20px;font-weight:800;font-family:Orbitron,sans-serif;color:#7b2ff7">${esc(q.number||'COTIZACIÓN')}</div>
+        <div><b>Fecha:</b> ${fmtDate($('q_issue').value)}</div>
+        <div><b>Válida hasta:</b> ${fmtDate($('q_valid').value)}</div>
+      </div>
+    </div>
+    ${q.title?`<div style="margin-top:16px;font-size:15px"><b>Proyecto:</b> ${esc(q.title)}</div>`:''}
+    <table style="width:100%;border-collapse:collapse;margin-top:18px;font-size:13px">
+      <thead><tr style="background:#f3f0ff">
+        <th style="text-align:left;padding:9px 10px;border-bottom:2px solid #7b2ff7">Descripción</th>
+        <th style="text-align:right;padding:9px 10px;border-bottom:2px solid #7b2ff7">Cant.</th>
+        <th style="text-align:center;padding:9px 10px;border-bottom:2px solid #7b2ff7">Unid.</th>
+        <th style="text-align:right;padding:9px 10px;border-bottom:2px solid #7b2ff7">P. Unit.</th>
+        <th style="text-align:right;padding:9px 10px;border-bottom:2px solid #7b2ff7">Total</th>
+      </tr></thead><tbody>
+      ${q.items.filter(it=>it.description||lineTotal(it)).map(it=>`<tr>
+        <td style="padding:9px 10px;border-bottom:1px solid #eee">${esc(it.description||'')}<div style="font-size:11px;color:#999">${catName[it.category]||''}</div></td>
+        <td style="padding:9px 10px;border-bottom:1px solid #eee;text-align:right">${itemQty(it).toFixed(2)}</td>
+        <td style="padding:9px 10px;border-bottom:1px solid #eee;text-align:center">${esc(it.unit||'')}</td>
+        <td style="padding:9px 10px;border-bottom:1px solid #eee;text-align:right">${money(it.unit_price)}</td>
+        <td style="padding:9px 10px;border-bottom:1px solid #eee;text-align:right">${money(lineTotal(it))}</td>
+      </tr>`).join('')}
+      </tbody>
+    </table>
+    <div style="display:flex;justify-content:flex-end;margin-top:14px">
+      <div style="width:280px;font-size:13px">
+        <div style="display:flex;justify-content:space-between;padding:5px 0"><span>Subtotal</span><span>${money(sub)}</span></div>
+        ${disc>0?`<div style="display:flex;justify-content:space-between;padding:5px 0"><span>Descuento</span><span>-${money(disc)}</span></div>`:''}
+        <div style="display:flex;justify-content:space-between;padding:5px 0"><span>${esc(taxName())} (${Number($('q_tax').value||0)}%)</span><span>${money(tax)}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:10px 0;border-top:2px solid #7b2ff7;margin-top:4px;font-size:17px;font-weight:800"><span>TOTAL</span><span style="color:#7b2ff7">${money(total)}</span></div>
+      </div>
+    </div>
+    ${q.notes?`<div style="margin-top:20px"><div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.1em">Notas</div><div style="font-size:13px;color:#444;white-space:pre-wrap">${esc(q.notes)}</div></div>`:''}
+    ${q.terms?`<div style="margin-top:16px"><div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.1em">Términos</div><div style="font-size:12px;color:#666;white-space:pre-wrap">${esc(q.terms)}</div></div>`:''}
+    <div style="margin-top:40px;text-align:center;font-size:11px;color:#aaa">Generado por MESHIPPING // TERMINAL · ${new Date().toLocaleDateString('es-PA')}</div>
+  </div>`;
+  window.print();
+}
+
+// ============================================================
+// CLIENTS
+// ============================================================
+async function renderClients(){
+  try{ S.clients = await api.get('/api/clients'); }catch(e){}
+  $('clientsList').innerHTML = S.clients.length ? `<table class="tbl"><thead><tr>
+    <th>Nombre</th><th>Teléfono</th><th>Email</th><th>Dirección</th><th></th></tr></thead><tbody>
+    ${S.clients.map(c=>`<tr>
+      <td><b>${esc(c.name)}</b></td><td>${esc(c.phone||'')}</td><td>${esc(c.email||'')}</td><td>${esc(c.address||'')}</td>
+      <td class="num"><button class="btn sm ghost" onclick='editClient(${JSON.stringify(c.id)})'>Editar</button>
+      <button class="btn sm danger" onclick='delClient(${JSON.stringify(c.id)})'>✕</button></td>
+    </tr>`).join('')}</tbody></table>` : emptyBox('Sin clientes','Agrega tu primer cliente.');
+}
+function editClient(id){
+  const c = id ? S.clients.find(x=>x.id===id) : {name:'',phone:'',email:'',address:'',notes:''};
+  openModal(`<h3>${id?'Editar':'Nuevo'} cliente</h3>
+    <label class="f"><span>Nombre *</span><input id="c_name" value="${esc(c.name)}"></label>
+    <div class="row2">
+      <label class="f"><span>Teléfono</span><input id="c_phone" value="${esc(c.phone||'')}"></label>
+      <label class="f"><span>Email</span><input id="c_email" value="${esc(c.email||'')}"></label>
+    </div>
+    <label class="f"><span>Dirección</span><input id="c_address" value="${esc(c.address||'')}"></label>
+    <label class="f"><span>Notas</span><textarea id="c_notes">${esc(c.notes||'')}</textarea></label>
+    <div class="modal-actions"><button class="btn ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn green" onclick="saveClient(${JSON.stringify(id||null)})">Guardar</button></div>`);
+}
+async function saveClient(id){
+  const b={name:$('c_name').value,phone:$('c_phone').value,email:$('c_email').value,address:$('c_address').value,notes:$('c_notes').value};
+  if(!b.name.trim()){ toast('El nombre es obligatorio',true); return; }
+  try{ id?await api.send('PUT','/api/clients/'+id,b):await api.send('POST','/api/clients',b);
+    S.clients=await api.get('/api/clients'); closeModal(); renderClients(); toast('Cliente guardado ✓'); }
+  catch(e){ toast(e.message,true); }
+}
+async function delClient(id){
+  if(!confirm('¿Eliminar este cliente?')) return;
+  try{ await api.send('DELETE','/api/clients/'+id); S.clients=await api.get('/api/clients'); renderClients(); toast('Cliente eliminado'); }
+  catch(e){ toast(e.message,true); }
+}
+
+// ============================================================
+// CATALOG
+// ============================================================
+const CAT_NAMES={'pintura-interior':'Pintura interior','pintura-exterior':'Pintura exterior','gypsum':'Gypsum','remodelacion':'Remodelación','otro':'Otro'};
+async function renderCatalog(){
+  try{ S.catalog = await api.get('/api/catalog'); }catch(e){}
+  $('catalogList').innerHTML = S.catalog.length ? `<table class="tbl"><thead><tr>
+    <th>Servicio</th><th>Categoría</th><th>Unidad</th><th class="num">Precio</th><th class="num">m²/gal</th><th class="num">Manos</th><th></th></tr></thead><tbody>
+    ${S.catalog.map(c=>`<tr>
+      <td><b>${esc(c.name)}</b></td><td><span class="tag">${CAT_NAMES[c.category]||c.category||''}</span></td>
+      <td>${esc(c.unit||'')}</td><td class="num mono">${money(c.unit_price)}</td>
+      <td class="num">${c.paint_yield||'—'}</td><td class="num">${c.coats||''}</td>
+      <td class="num"><button class="btn sm ghost" onclick='editCatalog(${JSON.stringify(c.id)})'>Editar</button>
+      <button class="btn sm danger" onclick='delCatalog(${JSON.stringify(c.id)})'>✕</button></td>
+    </tr>`).join('')}</tbody></table>` : emptyBox('Catálogo vacío','Agrega servicios con su precio para reutilizarlos.');
+}
+function editCatalog(id){
+  const c = id ? S.catalog.find(x=>x.id===id) : {category:'pintura-interior',name:'',unit:'m2',unit_price:0,paint_yield:S.settings.default_yield||35,coats:S.settings.default_coats||2,notes:''};
+  openModal(`<h3>${id?'Editar':'Nuevo'} servicio</h3>
+    <label class="f"><span>Nombre *</span><input id="k_name" value="${esc(c.name)}" placeholder="Ej: Pintura de pared con 2 manos"></label>
+    <div class="row2">
+      <label class="f"><span>Categoría</span><select id="k_cat">${Object.entries(CAT_NAMES).map(([v,n])=>`<option value="${v}" ${c.category===v?'selected':''}>${n}</option>`).join('')}</select></label>
+      <label class="f"><span>Unidad</span><select id="k_unit">${['m2','ml','und','global'].map(u=>`<option ${c.unit===u?'selected':''}>${u}</option>`).join('')}</select></label>
+    </div>
+    <div class="row2">
+      <label class="f"><span>Precio unitario</span><input type="number" step="0.01" id="k_price" value="${c.unit_price||0}"></label>
+      <label class="f"><span>Manos</span><input type="number" step="1" id="k_coats" value="${c.coats||2}"></label>
+    </div>
+    <label class="f"><span>Rendimiento (m²/galón) — para pintura</span><input type="number" step="1" id="k_yield" value="${c.paint_yield||''}"></label>
+    <label class="f"><span>Notas</span><textarea id="k_notes">${esc(c.notes||'')}</textarea></label>
+    <div class="modal-actions"><button class="btn ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn green" onclick="saveCatalog(${JSON.stringify(id||null)})">Guardar</button></div>`);
+}
+async function saveCatalog(id){
+  const b={name:$('k_name').value,category:$('k_cat').value,unit:$('k_unit').value,unit_price:Number($('k_price').value||0),
+    coats:Number($('k_coats').value||2),paint_yield:$('k_yield').value===''?'':Number($('k_yield').value),notes:$('k_notes').value};
+  if(!b.name.trim()){ toast('El nombre es obligatorio',true); return; }
+  try{ id?await api.send('PUT','/api/catalog/'+id,b):await api.send('POST','/api/catalog',b);
+    S.catalog=await api.get('/api/catalog'); closeModal(); renderCatalog(); toast('Servicio guardado ✓'); }
+  catch(e){ toast(e.message,true); }
+}
+async function delCatalog(id){
+  if(!confirm('¿Eliminar este servicio del catálogo?')) return;
+  try{ await api.send('DELETE','/api/catalog/'+id); S.catalog=await api.get('/api/catalog'); renderCatalog(); toast('Eliminado'); }
+  catch(e){ toast(e.message,true); }
+}
+
+// ============================================================
+// SETTINGS
+// ============================================================
+const SETTING_KEYS=['company_name','company_tagline','company_phone','company_email','company_address','company_logo','currency_symbol','tax_name','tax_rate','quote_prefix','validity_days','default_coats','default_yield','default_terms'];
+function fillSettings(){ SETTING_KEYS.forEach(k=>{ const el=$('s_'+k); if(el) el.value=S.settings[k]??''; }); }
+async function saveSettings(){
+  const b={}; SETTING_KEYS.forEach(k=>{ const el=$('s_'+k); if(el) b[k]=el.value; });
+  try{ S.settings=await api.send('PUT','/api/settings',b); toast('Ajustes guardados ✓'); }
+  catch(e){ toast(e.message,true); }
+}
+
+// ============================================================
+// Modal
+// ============================================================
+function openModal(html){ $('modal').innerHTML=html; $('overlay').classList.add('show'); }
+function closeModal(){ $('overlay').classList.remove('show'); }
+$('overlay').addEventListener('click',e=>{ if(e.target.id==='overlay') closeModal(); });
+
+boot();
+</script>
+</body>
+</html>
