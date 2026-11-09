@@ -203,6 +203,23 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:0 16px}
 .hint{font-size:12px;color:var(--muted2);margin-top:-6px;margin-bottom:12px}
 
+/* ---------- Lightbox (foto en grande) ---------- */
+.lightbox{position:fixed;inset:0;z-index:80;background:rgba(4,3,14,.86);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;padding:24px}
+.lightbox.show{display:flex}
+.lb-inner{position:relative;max-width:560px;width:100%;text-align:center}
+.lb-inner img{max-width:100%;max-height:72vh;border-radius:14px;border:1px solid var(--border2);background:#fff;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.lb-cap{margin-top:12px;color:var(--text);font-weight:600}
+.lb-close{position:absolute;top:-14px;right:-14px;width:36px;height:36px;border-radius:50%;background:var(--bg3);border:1px solid var(--border2);color:var(--text);cursor:pointer;font-size:16px}
+.lb-close:hover{border-color:var(--danger);color:var(--danger)}
+.catimg{cursor:zoom-in}
+
+/* ---------- Botón flotante cotización ---------- */
+#quoteFab{position:fixed;right:22px;bottom:22px;z-index:70;align-items:center;gap:8px;
+  border:none;color:#06101e;font-weight:700;font-size:14px;padding:13px 20px;border-radius:999px;cursor:pointer;
+  background:linear-gradient(135deg,var(--green),var(--cyan));box-shadow:0 10px 30px rgba(25,247,164,.4), var(--glow) rgba(47,230,255,.4)}
+#quoteFab:hover{filter:brightness(1.07)}
+#quoteFab #fabCount{font-family:'Orbitron',sans-serif}
+
 /* ---------- Plan editor (CAD futurista) ---------- */
 .plan-wrap{display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start}
 .plan-canvas-box{background:linear-gradient(180deg,rgba(18,15,48,.6),rgba(10,9,32,.6));border:1px solid var(--border2);border-radius:var(--radius);padding:10px;position:relative;box-shadow:inset 0 0 50px rgba(90,60,200,.12)}
@@ -540,6 +557,20 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
 
 <!-- Generic modal -->
 <div class="overlay" id="overlay"><div class="modal" id="modal"></div></div>
+
+<!-- Lightbox: foto en grande -->
+<div class="lightbox" id="lightbox" onclick="closeImage()">
+  <div class="lb-inner" onclick="event.stopPropagation()">
+    <button class="lb-close" onclick="closeImage()">✕</button>
+    <img id="lightboxImg" alt="">
+    <div class="lb-cap" id="lightboxCap"></div>
+    <button class="btn green" id="lightboxAdd" style="margin-top:12px">➕ Agregar a cotización</button>
+  </div>
+</div>
+
+<!-- Botón flotante: cotización en curso -->
+<button id="quoteFab" onclick="openCurrentQuote()" style="display:none">🧾 Ver cotización (<span id="fabCount">0</span>)</button>
+
 <div id="toast"></div>
 
 <script>
@@ -579,6 +610,7 @@ function go(v){
   if(v==='clients') renderClients();
   if(v==='catalog') renderCatalog();
   if(v==='settings') fillSettings();
+  updateQuoteFab();
 }
 document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>go(b.dataset.v));
 
@@ -653,15 +685,39 @@ const COST_ICON={pintura:'🎨',materiales:'📦','mano-obra':'👷',equipo:'�
 const COST_COLOR={pintura:'#a855f7',materiales:'#2fe6ff','mano-obra':'#19f7a4',equipo:'#ffcf5a',herramienta:'#5a6bff',alquiler:'#ff5d7a',otro:'#9aa0cf'};
 function blankItem(){ return { id:null, category:'pintura-interior', cost_type:'mano-obra', description:'', unit:'m2', is_area:1, width:0, height:0, qcount:1, deduction:0, qty:0, unit_price:0, coats:Number(S.settings.default_coats||2), paint_yield:Number(S.settings.default_yield||35) }; }
 
-function newQuote(){
-  S.editing = {
+function blankQuote(withItem){
+  return {
     id:null, number:'', client_id:'', title:'', status:'borrador',
     issue_date:new Date().toISOString().slice(0,10),
     valid_until:new Date(Date.now()+ (Number(S.settings.validity_days||15))*864e5).toISOString().slice(0,10),
     tax_rate:Number(S.settings.tax_rate||7), discount_type:'none', discount_value:0,
-    notes:'', terms:S.settings.default_terms||'', items:[blankItem()]
+    notes:'', terms:S.settings.default_terms||'', items: withItem?[blankItem()]:[]
   };
-  fillEditor(); go('editor');
+}
+function newQuote(){ S.editing = blankQuote(true); fillEditor(); go('editor'); updateQuoteFab(); }
+// Agregar un producto del catálogo a la cotización en curso (desde cualquier pestaña)
+function catalogItemToQuoteItem(c){
+  const it=blankItem();
+  it.description=c.name; it.cost_type=c.cost_type||'materiales'; it.category=c.category||'otro';
+  it.unit=c.unit||'und'; it.unit_price=+c.unit_price||0; it.is_area=(c.unit==='m2')?1:0;
+  if(!it.is_area) it.qty=1;
+  if(c.paint_yield) it.paint_yield=+c.paint_yield; if(c.coats) it.coats=+c.coats;
+  return it;
+}
+function addToCurrentQuote(id){
+  const c=S.catalog.find(x=>x.id===id); if(!c) return;
+  if(!S.editing) S.editing=blankQuote(false);
+  S.editing.items.push(catalogItemToQuoteItem(c));
+  if(document.getElementById('view-editor').classList.contains('active')) renderItems();
+  updateQuoteFab();
+  toast('➕ '+c.name+' → cotización en curso ('+S.editing.items.length+')');
+}
+function openCurrentQuote(){ if(!S.editing) S.editing=blankQuote(true); if(!S.editing.items.length) S.editing.items=[blankItem()]; fillEditor(); go('editor'); updateQuoteFab(); }
+function updateQuoteFab(){
+  const fab=$('quoteFab'); if(!fab) return;
+  const n=S.editing&&S.editing.items?S.editing.items.filter(it=>it.description||it.unit_price).length:0;
+  const inEditor=document.getElementById('view-editor').classList.contains('active');
+  if(n>0 && !inEditor){ fab.style.display='flex'; $('fabCount').textContent=n; } else fab.style.display='none';
 }
 async function openQuote(id){
   try{ S.editing = await api.get('/api/quotes/'+id); if(!S.editing.items.length) S.editing.items=[blankItem()]; fillEditor(); go('editor'); }
@@ -971,7 +1027,13 @@ async function renderCatalog(){
   try{ S.catalog = await api.get('/api/catalog'); }catch(e){}
   paintCatalog();
 }
-function catThumb(c){ return c.image ? `<img src="${esc(c.image)}" style="width:40px;height:40px;object-fit:cover;border-radius:7px;border:1px solid var(--border)" onerror="this.style.display='none'">` : `<div style="width:40px;height:40px;border-radius:7px;background:var(--panel2);border:1px solid var(--border);display:grid;place-items:center;color:var(--muted2);font-size:16px">${COST_ICON[c.cost_type]||'•'}</div>`; }
+function catThumb(c){ return c.image ? `<img class="catimg" src="${esc(c.image)}" style="width:44px;height:44px;object-fit:cover;border-radius:7px;border:1px solid var(--border)" onclick="showImageById('${c.id}')" title="Ver en grande" onerror="this.style.display='none'">` : `<div style="width:44px;height:44px;border-radius:7px;background:var(--panel2);border:1px solid var(--border);display:grid;place-items:center;color:var(--muted2);font-size:16px">${COST_ICON[c.cost_type]||'•'}</div>`; }
+let _lbId=null;
+function showImage(url,name,catId){ if(!url) return; $('lightboxImg').src=url; $('lightboxCap').textContent=name||''; _lbId=catId||null;
+  const add=$('lightboxAdd'); if(_lbId){ add.style.display=''; add.onclick=()=>{ addToCurrentQuote(_lbId); closeImage(); }; } else add.style.display='none';
+  $('lightbox').classList.add('show'); }
+function showImageById(id){ const c=S.catalog.find(x=>x.id===id); if(c&&c.image) showImage(c.image,c.name,c.id); }
+function closeImage(){ $('lightbox').classList.remove('show'); }
 function paintCatalog(){
   const q=($('catSearch')?.value||'').toLowerCase().trim();
   let list=S.catalog;
@@ -983,7 +1045,8 @@ function paintCatalog(){
       <td><b>${esc(c.name)}</b></td><td><span class="tag">${COST_ICON[c.cost_type]||''} ${COST_LBL[c.cost_type]||c.cost_type||''}</span></td>
       <td>${esc(c.unit||'')}</td><td class="num mono">${money(c.unit_price)}</td>
       <td class="num">${c.paint_yield||'—'}</td>
-      <td class="num"><button class="btn sm ghost" onclick='editCatalog(${JSON.stringify(c.id)})'>Editar</button>
+      <td class="num" style="white-space:nowrap"><button class="btn sm green" title="Agregar a la cotización en curso" onclick="addToCurrentQuote('${c.id}')">➕ Cotizar</button>
+      <button class="btn sm ghost" onclick='editCatalog(${JSON.stringify(c.id)})'>Editar</button>
       <button class="btn sm danger" onclick='delCatalog(${JSON.stringify(c.id)})'>✕</button></td>
     </tr>`).join('')}</tbody></table>` : emptyBox(q?'Sin coincidencias':'Catálogo vacío', q?'':'Agrega productos con su precio, o usa 📥 Importar lista.');
 }
