@@ -100,6 +100,19 @@ CREATE TABLE IF NOT EXISTS quote_items (
   notes       TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_items_quote ON quote_items(quote_id);
+
+CREATE TABLE IF NOT EXISTS plans (
+  id         TEXT PRIMARY KEY,
+  name       TEXT,
+  client_id  TEXT,
+  quote_id   TEXT,
+  scale      REAL DEFAULT 50,
+  area_total REAL DEFAULT 0,
+  data       TEXT,
+  notes      TEXT,
+  created_at TEXT,
+  updated_at TEXT
+);
 `);
 
 // ---------- Valores por defecto (primera corrida) ----------
@@ -419,6 +432,52 @@ app.delete('/api/quotes/:id', wrap((req, res) => {
     db.prepare('DELETE FROM quote_items WHERE quote_id=?').run(req.params.id);
     db.prepare('DELETE FROM quotes WHERE id=?').run(req.params.id);
   });
+  res.json({ ok: true });
+}));
+
+// ---------- Planos / croquis ----------
+app.get('/api/plans', wrap((req, res) => {
+  const rows = db.prepare(`
+    SELECT p.id, p.name, p.scale, p.area_total, p.client_id, p.quote_id, p.created_at, p.updated_at,
+           c.name AS client_name
+    FROM plans p LEFT JOIN clients c ON c.id = p.client_id
+    ORDER BY p.updated_at DESC`).all();
+  res.json(rows);
+}));
+
+app.get('/api/plans/:id', wrap((req, res) => {
+  const p = db.prepare('SELECT * FROM plans WHERE id=?').get(req.params.id);
+  if (!p) return res.status(404).json({ error: 'Plano no encontrado' });
+  try { p.data = JSON.parse(p.data || '{}'); } catch { p.data = {}; }
+  res.json(p);
+}));
+
+app.post('/api/plans', wrap((req, res) => {
+  const b = req.body || {};
+  const id = uid(), t = now();
+  db.prepare(`INSERT INTO plans (id,name,client_id,quote_id,scale,area_total,data,notes,created_at,updated_at)
+              VALUES (?,?,?,?,?,?,?,?,?,?)`)
+    .run(id, str(b.name) || 'Plano', b.client_id || null, b.quote_id || null,
+         num(b.scale, 50), num(b.area_total), JSON.stringify(b.data || {}), str(b.notes), t, t);
+  const p = db.prepare('SELECT * FROM plans WHERE id=?').get(id);
+  try { p.data = JSON.parse(p.data || '{}'); } catch { p.data = {}; }
+  res.json(p);
+}));
+
+app.put('/api/plans/:id', wrap((req, res) => {
+  const b = req.body || {};
+  const cur = db.prepare('SELECT id FROM plans WHERE id=?').get(req.params.id);
+  if (!cur) return res.status(404).json({ error: 'Plano no encontrado' });
+  db.prepare(`UPDATE plans SET name=?, client_id=?, quote_id=?, scale=?, area_total=?, data=?, notes=?, updated_at=? WHERE id=?`)
+    .run(str(b.name) || 'Plano', b.client_id || null, b.quote_id || null, num(b.scale, 50),
+         num(b.area_total), JSON.stringify(b.data || {}), str(b.notes), now(), req.params.id);
+  const p = db.prepare('SELECT * FROM plans WHERE id=?').get(req.params.id);
+  try { p.data = JSON.parse(p.data || '{}'); } catch { p.data = {}; }
+  res.json(p);
+}));
+
+app.delete('/api/plans/:id', wrap((req, res) => {
+  db.prepare('DELETE FROM plans WHERE id=?').run(req.params.id);
   res.json({ ok: true });
 }));
 
