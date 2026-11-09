@@ -48,6 +48,7 @@ CREATE TABLE IF NOT EXISTS clients (
 CREATE TABLE IF NOT EXISTS catalog (
   id          TEXT PRIMARY KEY,
   category    TEXT,
+  cost_type   TEXT DEFAULT 'materiales',
   name        TEXT NOT NULL,
   unit        TEXT DEFAULT 'm2',
   unit_price  REAL DEFAULT 0,
@@ -85,6 +86,7 @@ CREATE TABLE IF NOT EXISTS quote_items (
   quote_id    TEXT NOT NULL,
   position    INTEGER DEFAULT 0,
   category    TEXT,
+  cost_type   TEXT DEFAULT 'otro',
   description TEXT,
   unit        TEXT DEFAULT 'm2',
   is_area     INTEGER DEFAULT 0,
@@ -114,6 +116,14 @@ CREATE TABLE IF NOT EXISTS plans (
   updated_at TEXT
 );
 `);
+
+// ---------- Migraciones suaves (agrega columnas nuevas a DBs ya creadas) ----------
+function ensureCol(table, col, def) {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all();
+  if (!cols.some(c => c.name === col)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${def}`);
+}
+ensureCol('quote_items', 'cost_type', "TEXT DEFAULT 'otro'");
+ensureCol('catalog',     'cost_type', "TEXT DEFAULT 'materiales'");
 
 // ---------- Valores por defecto (primera corrida) ----------
 const DEFAULT_META = {
@@ -205,22 +215,23 @@ function saveQuoteItems(quoteId, rawItems, quote) {
   const items = Array.isArray(rawItems) ? rawItems : [];
   db.prepare('DELETE FROM quote_items WHERE quote_id=?').run(quoteId);
   const ins = db.prepare(`INSERT INTO quote_items
-    (id, quote_id, position, category, description, unit, is_area, width, height, qcount, deduction, qty, unit_price, coats, paint_yield, line_total, notes)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
+    (id, quote_id, position, category, cost_type, description, unit, is_area, width, height, qcount, deduction, qty, unit_price, coats, paint_yield, line_total, notes)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
   const stored = [];
   items.forEach((it, i) => {
     const isArea = it.is_area ? 1 : 0;
     const { qty, lineTotal } = computeItem({ ...it, is_area: isArea });
     const row = {
       id: it.id || uid(), position: i,
-      category: str(it.category), description: str(it.description),
+      category: str(it.category), cost_type: str(it.cost_type) || 'otro',
+      description: str(it.description),
       unit: str(it.unit) || 'm2', is_area: isArea,
       width: num(it.width), height: num(it.height), qcount: num(it.qcount, 1),
       deduction: num(it.deduction), qty, unit_price: num(it.unit_price),
       coats: num(it.coats, 2), paint_yield: it.paint_yield == null ? null : num(it.paint_yield),
       line_total: lineTotal, notes: str(it.notes)
     };
-    ins.run(row.id, quoteId, row.position, row.category, row.description, row.unit, row.is_area,
+    ins.run(row.id, quoteId, row.position, row.category, row.cost_type, row.description, row.unit, row.is_area,
       row.width, row.height, row.qcount, row.deduction, row.qty, row.unit_price, row.coats,
       row.paint_yield, row.line_total, row.notes);
     stored.push(row);
@@ -296,9 +307,9 @@ app.post('/api/catalog', wrap((req, res) => {
   const b = req.body || {};
   if (!str(b.name).trim()) return res.status(400).json({ error: 'El nombre es obligatorio' });
   const id = uid(), t = now();
-  db.prepare(`INSERT INTO catalog (id,category,name,unit,unit_price,paint_yield,coats,notes,active,created_at,updated_at)
-              VALUES (?,?,?,?,?,?,?,?,?,?,?)`)
-    .run(id, str(b.category), str(b.name).trim(), str(b.unit) || 'm2', num(b.unit_price),
+  db.prepare(`INSERT INTO catalog (id,category,cost_type,name,unit,unit_price,paint_yield,coats,notes,active,created_at,updated_at)
+              VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`)
+    .run(id, str(b.category), str(b.cost_type) || 'materiales', str(b.name).trim(), str(b.unit) || 'm2', num(b.unit_price),
          b.paint_yield == null || b.paint_yield === '' ? null : num(b.paint_yield),
          num(b.coats, 2), str(b.notes), b.active === 0 ? 0 : 1, t, t);
   res.json(db.prepare('SELECT * FROM catalog WHERE id=?').get(id));
@@ -308,8 +319,8 @@ app.put('/api/catalog/:id', wrap((req, res) => {
   const b = req.body || {};
   const exists = db.prepare('SELECT id FROM catalog WHERE id=?').get(req.params.id);
   if (!exists) return res.status(404).json({ error: 'Item no encontrado' });
-  db.prepare(`UPDATE catalog SET category=?, name=?, unit=?, unit_price=?, paint_yield=?, coats=?, notes=?, active=?, updated_at=? WHERE id=?`)
-    .run(str(b.category), str(b.name).trim(), str(b.unit) || 'm2', num(b.unit_price),
+  db.prepare(`UPDATE catalog SET category=?, cost_type=?, name=?, unit=?, unit_price=?, paint_yield=?, coats=?, notes=?, active=?, updated_at=? WHERE id=?`)
+    .run(str(b.category), str(b.cost_type) || 'materiales', str(b.name).trim(), str(b.unit) || 'm2', num(b.unit_price),
          b.paint_yield == null || b.paint_yield === '' ? null : num(b.paint_yield),
          num(b.coats, 2), str(b.notes), b.active === 0 ? 0 : 1, now(), req.params.id);
   res.json(db.prepare('SELECT * FROM catalog WHERE id=?').get(req.params.id));
