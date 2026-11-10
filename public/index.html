@@ -731,8 +731,8 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
     <div class="plan-wrap">
       <div class="plan-canvas-box">
         <div class="plan-toolbar">
-          <button class="tool on" id="tool-free" onclick="setMode('free')">✏️ Libre</button>
-          <button class="tool ghost" id="tool-rect" onclick="setMode('rect')">▭ Rectángulo</button>
+          <button class="tool on" id="tool-rect" onclick="setMode('rect')">▭ Rectángulo</button>
+          <button class="tool ghost" id="tool-free" onclick="setMode('free')">✏️ Libre</button>
           <button class="tool ghost" id="tool-circle" onclick="setMode('circle')">⬭ Círculo</button>
           <button class="tool ghost" id="tool-draw" onclick="setMode('draw')">📐 Polígono</button>
           <button class="tool ghost" id="tool-select" onclick="setMode('select')">✋ Editar</button>
@@ -1822,7 +1822,7 @@ function planCalcDefaults(){ const s=S.settings||{}; return {
   waste:Number(s.desperdicio||12), umbral:Number(s.umbral_vano||1.5),
   tbase:Number(s.tarifa_base_m2||12), trec:Number(s.tarifa_recorte_ml||4.5) }; }
 function blankPlan(){ return { id:null,name:'',client_id:'',scale:50,rooms:[],bg:null,calc:planCalcDefaults(),repairs:[],repairKind:'grieta',furniture:[],furnKind:'sofa',
-  mode:'free',current:[],sel:null,drag:null,pan:null,calib:[],hover:null,create:null,vb:{x:0,y:0,w:1200,h:1200/ASPECT} }; }
+  mode:'rect',current:[],sel:null,drag:null,pan:null,calib:[],hover:null,create:null,vb:{x:0,y:0,w:1200,h:1200/ASPECT} }; }
 function newPlan(){ P=blankPlan(); mountPlanEditor(); go('planeditor'); }
 async function openPlan(id){
   try{ const p=await api.get('/api/plans/'+id); P=blankPlan();
@@ -1862,7 +1862,7 @@ const MODE_HINTS={
   repair:'🔧 <b>Reparación</b>: elige el tipo y haz clic en el plano donde está el daño (humedad, grieta, hueco). Se suma al presupuesto.',
   rect:'▭ <b>Rectángulo</b>: <b>arrastra</b> sobre el plano para dibujar la sala. Luego ajusta las medidas (doble clic en una pared o edita en el panel).',
   circle:'⬭ <b>Círculo</b>: <b>arrastra desde el centro</b> hacia afuera para dibujar. Luego pon el diámetro exacto en el panel de la sala.',
-  free:'✏️ <b>Libre</b>: mantén presionado y <b>mueve</b> para dibujar cualquier forma; al soltar se convierte en sala. Luego ajusta las medidas en Editar.',
+  free:'✏️ <b>Libre</b>: mantén presionado y <b>mueve</b> para dibujar cualquier forma; al soltar se endereza y ajusta a la cuadrícula. Afina las medidas en <b>✋ Editar</b> (doble clic en una pared).',
   furniture:'🛋️ <b>Muebles</b>: elige el tipo y haz clic donde está el mueble. No se pinta, pero suma costo de protección (plásticos/cinta).'
 };
 function setMode(m){
@@ -2074,6 +2074,24 @@ function rid(){ return 'r'+Math.random().toString(36).slice(2,8); }
 function regenCircle(r){ const N=r.points.length||48; for(let i=0;i<N;i++){ const ang=i/N*2*Math.PI; r.points[i]={x:r.cx+Math.cos(ang)*r.r, y:r.cy+Math.sin(ang)*r.r}; } }
 function makeCircleRoom(cx,cy,rad,color,name){ const r={ id:rid(), name, color, points:new Array(48).fill(0).map(()=>({x:0,y:0})), height:2.7, openings:[], estado:'lisa', shape:'circle', cx, cy, r:rad }; regenCircle(r); return r; }
 function perpDist(p,a,b){ const dx=b.x-a.x,dy=b.y-a.y, L=Math.hypot(dx,dy)||1; return Math.abs((p.x-a.x)*dy-(p.y-a.y)*dx)/L; }
+function cleanPolygon(pts){
+  pts=pts.map(p=>({x:p.x,y:p.y}));
+  // enderezar paredes casi horizontales/verticales (varias pasadas)
+  for(let pass=0;pass<3;pass++){
+    for(let i=0;i<pts.length;i++){ const a=pts[i], b=pts[(i+1)%pts.length];
+      const adx=Math.abs(b.x-a.x), ady=Math.abs(b.y-a.y); if(!adx&&!ady) continue;
+      if(ady<=adx*0.30){ const my=(a.y+b.y)/2; a.y=my; b.y=my; }
+      else if(adx<=ady*0.30){ const mx=(a.x+b.x)/2; a.x=mx; b.x=mx; }
+    }
+  }
+  // ajustar a cuadrícula de 0.1 m para medidas limpias
+  const g=P.scale/10, sg=v=>Math.round(v/g)*g;
+  pts.forEach(p=>{ p.x=sg(p.x); p.y=sg(p.y); });
+  // quitar vértices repetidos/muy cercanos
+  const out=[]; for(let i=0;i<pts.length;i++){ const p=pts[i], q=out[out.length-1]; if(!q||dist(p,q)>g*0.5) out.push(p); }
+  if(out.length>2 && dist(out[0],out[out.length-1])<g*0.5) out.pop();
+  return out;
+}
 function rdp(pts,eps){ if(pts.length<3) return pts.slice();
   let dmax=0,idx=0; const a=pts[0], b=pts[pts.length-1];
   for(let i=1;i<pts.length-1;i++){ const d=perpDist(pts[i],a,b); if(d>dmax){dmax=d;idx=i;} }
@@ -2085,9 +2103,10 @@ function finishCreate(){
   const color=ROOM_COLORS[P.rooms.length%ROOM_COLORS.length], nm='Sala '+(P.rooms.length+1);
   if(cr.kind==='free'){
     let pts=cr.pts||[]; if(pts.length<3){ draw(); return; }
-    let simp=rdp(pts, P.scale*0.12);
-    // quitar punto de cierre casi duplicado
-    if(simp.length>3 && dist(simp[0],simp[simp.length-1])<P.scale*0.25) simp.pop();
+    let simp=rdp(pts, P.scale*0.20);
+    if(simp.length>3 && dist(simp[0],simp[simp.length-1])<P.scale*0.35) simp.pop();
+    if(simp.length<3){ draw(); return; }
+    simp=cleanPolygon(simp);
     if(simp.length<3){ draw(); return; }
     P.rooms.push({ id:rid(), name:nm, color, points:simp, height:2.7, openings:[], estado:'lisa' });
     P.sel=P.rooms.length-1; setMode('select'); draw(); return;
