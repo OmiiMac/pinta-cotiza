@@ -9,22 +9,26 @@
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#070615; --bg2:#0c0a24; --bg3:#120f30;
-  --panel:rgba(20,17,52,.72); --panel2:rgba(28,23,70,.55);
-  --border:rgba(136,108,255,.28); --border2:rgba(136,108,255,.5);
-  --cyan:#2fe6ff; --cyan2:#7df9ff; --violet:#a855f7; --magenta:#d946ef;
-  --green:#19f7a4; --blue:#5a6bff; --text:#e9ecff; --muted:#9aa0cf; --muted2:#6f74a3;
-  --danger:#ff5d7a; --warn:#ffcf5a; --ok:#19f7a4;
+  /* === PINTURA VIVA — estudio de pintura === */
+  --bg:#120d10; --bg2:#1a1216; --bg3:#231820;
+  --panel:rgba(36,25,33,.72); --panel2:rgba(52,36,46,.5);
+  --border:rgba(255,180,150,.18); --border2:rgba(255,180,150,.38);
+  /* --cyan y --cyan2 = color de acento (se "pinta" con los swatches) */
+  --cyan:#17c3b2; --cyan2:#5ff0df;
+  --violet:#ff6b9d; --magenta:#ff5d5d;
+  --green:#8ce05a; --blue:#37a0f4; --text:#fbeee6; --muted:#c7a79c; --muted2:#8f7268;
+  --danger:#ff5a6e; --warn:#ffb13c; --ok:#8ce05a;
   --radius:14px; --glow:0 0 22px;
-  --grad:linear-gradient(135deg,var(--violet),var(--cyan));
+  --grad:linear-gradient(135deg,var(--magenta),var(--warn) 45%,var(--cyan));
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
 body{
   background:
-    radial-gradient(1100px 700px at 15% -10%, rgba(120,70,255,.22), transparent 60%),
-    radial-gradient(900px 600px at 95% 0%, rgba(47,230,255,.14), transparent 55%),
-    radial-gradient(700px 600px at 50% 120%, rgba(25,247,164,.10), transparent 60%),
+    radial-gradient(900px 620px at 12% -8%, rgba(255,93,93,.18), transparent 60%),
+    radial-gradient(820px 560px at 96% -4%, rgba(255,177,60,.16), transparent 58%),
+    radial-gradient(760px 620px at 82% 108%, rgba(23,195,178,.16), transparent 60%),
+    radial-gradient(700px 600px at 20% 115%, rgba(255,107,157,.13), transparent 60%),
     var(--bg);
   color:var(--text); font-family:'Space Grotesk',system-ui,sans-serif; font-size:15px;
   min-height:100vh;
@@ -121,11 +125,12 @@ main{max-width:1180px;margin:0 auto;padding:26px 22px 80px}
 
 .hero{position:relative;overflow:hidden;border:1px solid var(--border2);border-radius:22px;padding:28px 28px;margin-bottom:16px;
   background:linear-gradient(135deg, rgba(123,47,247,.16), rgba(10,8,32,.35) 45%, rgba(47,230,255,.1))}
-.hero::before{content:"";position:absolute;inset:-45%;z-index:0;filter:blur(32px);animation:aurora 16s ease-in-out infinite;
+.hero::before{content:"";position:absolute;inset:-45%;z-index:0;filter:blur(30px);animation:aurora 16s ease-in-out infinite;
   background:
-   radial-gradient(38% 48% at 18% 28%, rgba(168,85,247,.55), transparent 60%),
-   radial-gradient(40% 50% at 82% 18%, rgba(47,230,255,.45), transparent 60%),
-   radial-gradient(46% 56% at 62% 95%, rgba(25,247,164,.33), transparent 60%)}
+   radial-gradient(34% 44% at 16% 26%, rgba(255,93,93,.55), transparent 60%),
+   radial-gradient(34% 44% at 84% 16%, rgba(255,177,60,.5), transparent 60%),
+   radial-gradient(36% 46% at 50% 98%, rgba(23,195,178,.42), transparent 60%),
+   radial-gradient(30% 40% at 72% 70%, rgba(255,107,157,.4), transparent 60%)}
 .hero::after{content:"";position:absolute;inset:0;z-index:0;opacity:.45;
   background-image:linear-gradient(rgba(136,108,255,.10) 1px,transparent 1px),linear-gradient(90deg,rgba(136,108,255,.10) 1px,transparent 1px);
   background-size:36px 36px;-webkit-mask:radial-gradient(circle at 50% 35%, #000 25%, transparent 78%);mask:radial-gradient(circle at 50% 35%, #000 25%, transparent 78%)}
@@ -138,6 +143,13 @@ main{max-width:1180px;margin:0 auto;padding:26px 22px 80px}
 .hero .clock{margin-left:auto;text-align:right}
 .hero .clock .t{font-family:'Orbitron',sans-serif;font-size:30px;color:var(--cyan2);text-shadow:0 0 16px rgba(47,230,255,.5);letter-spacing:.05em;font-variant-numeric:tabular-nums}
 .hero .clock .d{font-size:12px;color:var(--muted);text-transform:capitalize;margin-top:2px}
+.swatches{position:relative;z-index:1;display:flex;align-items:center;gap:9px;margin-top:18px;flex-wrap:wrap}
+.swatches .sw-lbl{font-size:12px;color:var(--text);font-weight:600;margin-right:2px;opacity:.85}
+.swatch{width:28px;height:28px;border-radius:9px;border:2px solid rgba(255,255,255,.22);cursor:pointer;padding:0;transition:.16s;box-shadow:0 4px 10px rgba(0,0,0,.4);position:relative}
+.swatch::after{content:"";position:absolute;left:5px;right:5px;bottom:-3px;height:6px;border-radius:0 0 6px 6px;background:inherit;filter:brightness(.7);opacity:.0;transition:.16s}
+.swatch:hover{transform:translateY(-3px) scale(1.08)}
+.swatch:hover::after{opacity:.8}
+.swatch.on{border-color:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.35),0 6px 14px rgba(0,0,0,.45)}
 
 .cmdbar{position:relative;display:flex;align-items:center;gap:10px;margin-bottom:18px;padding:3px 8px 3px 16px;border-radius:15px;border:1px solid var(--border2);background:var(--panel);box-shadow:inset 0 0 22px rgba(90,60,200,.1)}
 .cmdbar:focus-within{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(47,230,255,.12),inset 0 0 22px rgba(90,60,200,.1)}
@@ -156,7 +168,7 @@ main{max-width:1180px;margin:0 auto;padding:26px 22px 80px}
 .qa span:last-child{position:relative;z-index:1}
 
 .kpi{position:relative;overflow:hidden;background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:16px 18px;transition:.18s;cursor:pointer}
-.kpi::before{content:"";position:absolute;left:0;top:0;right:0;height:3px;background:var(--grad)}
+.kpi::before{content:"";position:absolute;left:0;top:0;right:0;height:4px;background:var(--kc,var(--grad))}
 .kpi::after{content:"";position:absolute;right:-28px;top:-28px;width:90px;height:90px;border-radius:50%;opacity:0;transition:.25s;background:radial-gradient(circle,rgba(136,108,255,.28),transparent 70%)}
 .kpi:hover{transform:translateY(-4px);border-color:var(--border2);box-shadow:0 14px 34px rgba(90,40,180,.28)}
 .kpi:hover::after{opacity:1}
@@ -453,6 +465,7 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
           <div class="d" id="dashDate"></div>
         </div>
       </div>
+      <div class="swatches" id="swatches"></div>
     </div>
     <div class="cmdbar reveal" style="animation-delay:.05s">
       <span class="cmd-ic">⌕</span>
@@ -782,6 +795,7 @@ document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>go(b.dataset.
 // Load
 // ============================================================
 async function boot(){
+  applyAccent();
   try{
     const [settings,clients,catalog,quotes] = await Promise.all([
       api.get('/api/settings'), api.get('/api/clients'), api.get('/api/catalog'), api.get('/api/quotes')
@@ -826,8 +840,10 @@ async function renderDash(){
     {k:'Monto aprobado', n:byStatus.aprobada?.monto||0, money:1, sm:1, ic:'💰', go:()=>filterQuotes('aprobada')},
     {k:'Clientes', n:sum?.clients??0, ic:'👥', go:()=>go('clients')},
   ];
-  $('statCards').innerHTML = _dashCards.map((c,i)=>`<div class="kpi" onclick="_dashCards[${i}].go()"><div class="k"><span class="ic">${c.ic}</span>${c.k}</div><div class="v ${c.sm?'sm':''}" data-to="${c.n}" data-money="${c.money?1:0}">${c.money?money(0):'0'}</div></div>`).join('');
+  const KPI_COLORS=['#17c3b2','#ff5d5d','#8ce05a','#ffb13c','#37a0f4'];
+  $('statCards').innerHTML = _dashCards.map((c,i)=>`<div class="kpi" style="--kc:${KPI_COLORS[i%KPI_COLORS.length]}" onclick="_dashCards[${i}].go()"><div class="k"><span class="ic">${c.ic}</span>${c.k}</div><div class="v ${c.sm?'sm':''}" style="color:${KPI_COLORS[i%KPI_COLORS.length]}" data-to="${c.n}" data-money="${c.money?1:0}">${c.money?money(0):'0'}</div></div>`).join('');
   animateCounts($('statCards'));
+  renderSwatches();
 
   // 2) Gráfica por estado (barras animadas, clicables)
   const order=[['borrador','Borrador','var(--muted)'],['enviada','Enviada','var(--cyan)'],['aprobada','Aprobada','var(--green)'],['rechazada','Rechazada','var(--danger)']];
@@ -861,6 +877,16 @@ function startClock(){ if(_clockTimer) return;
   const tick=()=>{ const el=$('dashClock'); if(!el) return; el.textContent=new Date().toLocaleTimeString('es-PA',{hour12:false}); };
   tick(); _clockTimer=setInterval(tick,1000);
 }
+// === PINTURA VIVA: swatches que repintan el acento de toda la app ===
+const SWATCHES=[{n:'Teal',c:'#17c3b2'},{n:'Coral',c:'#ff5d5d'},{n:'Mango',c:'#ffb13c'},{n:'Lima',c:'#8ce05a'},{n:'Cielo',c:'#37a0f4'},{n:'Uva',c:'#9b5de5'},{n:'Fucsia',c:'#ff5da2'}];
+function currentAccent(){ try{ return localStorage.getItem('pv_accent')||'#17c3b2'; }catch(e){ return '#17c3b2'; } }
+function lighten(hex,amt){ const n=hex.replace('#',''); const r=parseInt(n.slice(0,2),16),g=parseInt(n.slice(2,4),16),b=parseInt(n.slice(4,6),16); const f=x=>Math.round(x+(255-x)*amt).toString(16).padStart(2,'0'); return '#'+f(r)+f(g)+f(b); }
+function setAccent(hex){ const r=document.documentElement; r.style.setProperty('--cyan',hex); r.style.setProperty('--cyan2',lighten(hex,.38));
+  try{ localStorage.setItem('pv_accent',hex); }catch(e){}
+  document.querySelectorAll('#swatches .swatch').forEach(s=>s.classList.toggle('on', s.dataset.c===hex)); }
+function applyAccent(){ setAccent(currentAccent()); }
+function renderSwatches(){ const el=$('swatches'); if(!el) return; const cur=currentAccent();
+  el.innerHTML='<span class="sw-lbl">🎨 Pinta tu app</span>'+SWATCHES.map(s=>`<button class="swatch ${s.c===cur?'on':''}" style="background:${s.c}" data-c="${s.c}" title="${s.n}" onclick="setAccent('${s.c}')"></button>`).join(''); }
 // 6) Buscador global del inicio
 function hideGlobal(){ const b=$('globalResults'); if(b) b.classList.remove('show'); }
 function gsGo(id,kind){ hideGlobal(); const inp=$('globalSearch'); if(inp) inp.value='';
