@@ -538,6 +538,7 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
     <button data-v="plans">Planos</button>
     <button data-v="clients">Clientes</button>
     <button data-v="catalog">Catálogo</button>
+    <button data-v="prices">Precios</button>
     <button data-v="settings">Ajustes</button>
   </nav>
 </header>
@@ -821,6 +822,13 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
     <div class="panel"><div id="catalogList"></div></div>
   </section>
 
+  <!-- PRECIOS DE REFERENCIA -->
+  <section class="view" id="view-prices">
+    <div class="page-head"><h1>Precios de referencia</h1></div>
+    <div class="hint" style="margin-bottom:14px">Estudio de mercado Panamá (nov 2026). Elige el precio que quieras y toca <b>“Usar”</b> para aplicarlo a tu cotizador. Son referencias de <b>costo</b> — tu ganancia va encima.</div>
+    <div id="pricesContent"></div>
+  </section>
+
   <!-- SETTINGS -->
   <section class="view" id="view-settings">
     <div class="page-head"><h1>Ajustes</h1><div class="spacer"></div>
@@ -946,6 +954,7 @@ function go(v){
   if(v==='plans') renderPlans();
   if(v==='clients') renderClients();
   if(v==='catalog') renderCatalog();
+  if(v==='prices') renderPrices();
   if(v==='settings') fillSettings();
   updateQuoteFab();
 }
@@ -1660,6 +1669,73 @@ function logoFile(e){ const f=e.target.files[0]; if(!f) return; if(f.size>120000
 async function saveSettings(){
   const b={}; SETTING_KEYS.forEach(k=>{ const el=$('s_'+k); if(el) b[k]=el.value; });
   try{ S.settings=await api.send('PUT','/api/settings',b); applyBranding(); toast('Ajustes guardados ✓'); }
+  catch(e){ toast(e.message,true); }
+}
+
+// ===== Precios de referencia (estudio de mercado Panamá) =====
+const PRICE_REF=[
+ { title:'🖌️ Mano de obra — pintura por m²', param:'tarifa_base_m2', unit:'$/m²', note:'Pared interior, solo mano de obra.', rows:[
+   {name:'Pintura lisa 2 manos', val:3.15, spec:'Pared lisa, 2 manos. Base oficial (Contraloría).'},
+   {name:'Estándar de mercado', val:4.00, spec:'Pared normal, preparación básica. Recomendado.', rec:true},
+   {name:'Con preparación / altura', val:5.00, spec:'Humedad, gotelé, retiro de papel o doble altura.'},
+ ]},
+ { title:'✂️ Recorte / perfilado por metro lineal', param:'tarifa_recorte_ml', unit:'$/ml', note:'Encintado y bordes de puertas/ventanas/zócalos.', rows:[
+   {name:'Recorte estándar', val:2.00, spec:'Perfilado normal de marcos y zócalos.', rec:true},
+   {name:'Recorte fino', val:3.00, spec:'Molduras, dos colores, acabados detallados.'},
+ ]},
+ { title:'🪣 Pintura por galón', param:'precio_galon', unit:'$/gal', note:'Costo del material (según calidad).', rows:[
+   {name:'Económica', val:16, spec:'Látex/acrílica económica (1 gl).'},
+   {name:'Estándar durable', val:28, spec:'Alta durabilidad, lavable. Recomendado.', rec:true},
+   {name:'Premium', val:45, spec:'Premium / ecológica / impermeabilizante.'},
+ ]},
+ { title:'📉 Desperdicio de material', param:'desperdicio', unit:'%', note:'Extra de pintura por recortes y pérdidas.', rows:[
+   {name:'Mínimo', val:5, spec:'Superficies limpias, pocos vanos.'},
+   {name:'Típico', val:12, spec:'Trabajo normal. Recomendado.', rec:true},
+   {name:'Alto', val:15, spec:'Muchos recortes, texturas, irregular.'},
+ ]},
+ { title:'💰 Ganancia / utilidad', param:'default_margin', unit:'%', note:'Margen sobre el costo para el precio al cliente.', rows:[
+   {name:'Competitivo', val:25, spec:'Para ganar obras grandes o por volumen.'},
+   {name:'Equilibrado', val:35, spec:'Balance entre cierre y rentabilidad. Recomendado.', rec:true},
+   {name:'Premium', val:50, spec:'Trabajos exclusivos o urgentes.'},
+ ]},
+];
+const PRICE_INFO=[
+ { title:'👷 Jornal de pintor (referencia, informativo)', rows:[
+   {name:'Mínimo legal construcción (R1)', val:'$3.51/h · ~$28/día', spec:'Decreto 13, vigente ene 2026–2027. Ciudad de Panamá.'},
+   {name:'Ayudante informal', val:'$25–35/día', spec:'Jornalero según zona y experiencia.'},
+   {name:'Maestro pintor', val:'$35–60/día', spec:'Experiencia, acabados finos, supervisión.'},
+ ]},
+];
+function renderPrices(){
+  const s=S.settings||{};
+  let html=PRICE_REF.map(cat=>{
+    const cur=s[cat.param];
+    return `<div class="panel" style="margin-bottom:14px">
+      <div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:4px">
+        <h3 class="ttl">${cat.title}</h3>
+        <span class="hint" style="margin:0">${cat.note}</span>
+        <span style="margin-left:auto;font-size:12px;color:var(--muted)">Actual: <b style="color:var(--cyan2)">${cur!=null?cur+' '+cat.unit:'—'}</b></span>
+      </div>
+      <div class="tscroll"><table class="tbl"><thead><tr><th>Opción</th><th>Valor</th><th>Especificación</th><th></th></tr></thead><tbody>
+      ${cat.rows.map(r=>`<tr>
+        <td><b>${esc(r.name)}</b>${r.rec?' <span class="tag" style="color:var(--cyan2)">Recomendado</span>':''}</td>
+        <td class="mono" style="white-space:nowrap">${r.val} ${cat.unit}</td>
+        <td style="color:var(--muted)">${esc(r.spec)}</td>
+        <td class="num"><button class="btn sm ${String(cur)==String(r.val)?'':'primary'}" ${String(cur)==String(r.val)?'disabled':''} onclick="applyPrice('${cat.param}',${r.val})">${String(cur)==String(r.val)?'✓ En uso':'Usar'}</button></td>
+      </tr>`).join('')}
+      </tbody></table></div>
+    </div>`;
+  }).join('');
+  html+=PRICE_INFO.map(cat=>`<div class="panel" style="margin-bottom:14px">
+      <h3 class="ttl" style="margin:0 0 10px">${cat.title}</h3>
+      <div class="tscroll"><table class="tbl"><thead><tr><th>Concepto</th><th>Referencia</th><th>Detalle</th></tr></thead><tbody>
+      ${cat.rows.map(r=>`<tr><td><b>${esc(r.name)}</b></td><td class="mono" style="white-space:nowrap">${esc(r.val)}</td><td style="color:var(--muted)">${esc(r.spec)}</td></tr>`).join('')}
+      </tbody></table></div></div>`).join('');
+  html+=`<div class="hint">Fuentes: Contraloría (base de costos 2025) · Prensa/WageIndicator (salarios mínimos) · mercado local. Son referencias — confirma con cotizaciones locales. Puedes editar los valores exactos en <b>Ajustes</b>.</div>`;
+  $('pricesContent').innerHTML=html;
+}
+async function applyPrice(param,value){
+  try{ const b={}; b[param]=String(value); S.settings=await api.send('PUT','/api/settings',b); renderPrices(); toast('✓ Aplicado: '+param+' = '+value); }
   catch(e){ toast(e.message,true); }
 }
 
