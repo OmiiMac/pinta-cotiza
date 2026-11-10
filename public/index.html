@@ -33,6 +33,14 @@ a{color:var(--cyan);text-decoration:none}
 button{font-family:inherit}
 .mono{font-family:'Orbitron',sans-serif;letter-spacing:.06em}
 
+/* Rejilla tecnológica que se desplaza lentamente, detrás de toda la app */
+body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.5;
+  background-image:linear-gradient(rgba(136,108,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(136,108,255,.05) 1px,transparent 1px);
+  background-size:44px 44px;
+  -webkit-mask:radial-gradient(circle at 50% 0%, #000, transparent 78%);mask:radial-gradient(circle at 50% 0%, #000, transparent 78%);
+  animation:griddrift 34s linear infinite}
+@keyframes griddrift{from{background-position:0 0}to{background-position:44px 44px}}
+
 /* ---------- Top bar ---------- */
 header.topbar{
   position:sticky;top:0;z-index:40;
@@ -41,6 +49,10 @@ header.topbar{
   background:rgba(7,6,21,.82);backdrop-filter:blur(14px);
   border-bottom:1px solid var(--border);
 }
+header.topbar::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:1px;pointer-events:none;
+  background:linear-gradient(90deg,transparent,var(--violet),var(--cyan),transparent);background-size:220% 100%;
+  animation:scanline 7s linear infinite;opacity:.65}
+@keyframes scanline{from{background-position:0 0}to{background-position:220% 0}}
 .brand{display:flex;align-items:center;gap:11px;cursor:pointer;user-select:none}
 .brand .cube{
   width:42px;height:42px;flex:none;border-radius:11px;position:relative;overflow:hidden;
@@ -75,17 +87,19 @@ nav.tabs button.active{
 
 /* ---------- Layout ---------- */
 main{max-width:1180px;margin:0 auto;padding:26px 22px 80px}
-.view{display:none;animation:fade .25s ease}
+.view{display:none;animation:fade .3s ease}
 .view.active{display:block}
-@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 .page-head{display:flex;align-items:center;flex-wrap:wrap;gap:12px 14px;margin:4px 0 22px}
-.page-head h1{font-family:'Orbitron',sans-serif;font-size:22px;margin:0;letter-spacing:.04em}
+.page-head h1{position:relative;font-family:'Orbitron',sans-serif;font-size:22px;margin:0;letter-spacing:.04em;padding-left:15px}
+.page-head h1::before{content:"";position:absolute;left:0;top:50%;transform:translateY(-50%);width:4px;height:70%;border-radius:4px;background:var(--grad);box-shadow:0 0 10px rgba(136,108,255,.6)}
 .page-head .spacer{margin-left:auto}
 
 /* ---------- Cards / panels ---------- */
 .panel{
-  background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
-  padding:20px;backdrop-filter:blur(8px);
+  background:var(--panel);border:1px solid var(--border);border-radius:16px;
+  padding:20px;backdrop-filter:blur(10px);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.04), 0 8px 24px rgba(5,4,16,.32);
 }
 .panel+.panel{margin-top:18px}
 .grid{display:grid;gap:16px}
@@ -101,29 +115,67 @@ main{max-width:1180px;margin:0 auto;padding:26px 22px 80px}
 .stat.clk{cursor:pointer;transition:.15s}
 .stat.clk:hover{border-color:var(--border2);box-shadow:var(--glow) rgba(136,108,255,.25);transform:translateY(-2px)}
 
-/* ---------- Dashboard interactivo ---------- */
-.dash-hello{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin:2px 0 16px}
-.dash-hello h1{font-family:'Orbitron',sans-serif;font-size:22px;margin:0;letter-spacing:.03em}
-.dash-hello .date{color:var(--muted);font-size:14px}
-.dash-search{position:relative;margin-bottom:14px}
-.dash-search input{width:100%;font-size:15px;padding:13px 16px}
+/* ---------- Dashboard FUTURISTA ---------- */
+.reveal{opacity:0;transform:translateY(12px);animation:fadeUp .55s cubic-bezier(.2,.7,.3,1) forwards}
+@keyframes fadeUp{to{opacity:1;transform:none}}
+
+.hero{position:relative;overflow:hidden;border:1px solid var(--border2);border-radius:22px;padding:28px 28px;margin-bottom:16px;
+  background:linear-gradient(135deg, rgba(123,47,247,.16), rgba(10,8,32,.35) 45%, rgba(47,230,255,.1))}
+.hero::before{content:"";position:absolute;inset:-45%;z-index:0;filter:blur(32px);animation:aurora 16s ease-in-out infinite;
+  background:
+   radial-gradient(38% 48% at 18% 28%, rgba(168,85,247,.55), transparent 60%),
+   radial-gradient(40% 50% at 82% 18%, rgba(47,230,255,.45), transparent 60%),
+   radial-gradient(46% 56% at 62% 95%, rgba(25,247,164,.33), transparent 60%)}
+.hero::after{content:"";position:absolute;inset:0;z-index:0;opacity:.45;
+  background-image:linear-gradient(rgba(136,108,255,.10) 1px,transparent 1px),linear-gradient(90deg,rgba(136,108,255,.10) 1px,transparent 1px);
+  background-size:36px 36px;-webkit-mask:radial-gradient(circle at 50% 35%, #000 25%, transparent 78%);mask:radial-gradient(circle at 50% 35%, #000 25%, transparent 78%)}
+@keyframes aurora{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(6%,-4%) scale(1.12)}66%{transform:translate(-5%,5%) scale(1.06)}}
+.hero-inner{position:relative;z-index:1;display:flex;align-items:flex-start;flex-wrap:wrap;gap:16px}
+.hero h1{font-family:'Orbitron',sans-serif;font-size:27px;margin:0;letter-spacing:.02em;line-height:1.08}
+.hero .sub{color:var(--muted);font-size:14px;margin-top:8px}
+.hero .live-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 10px var(--green);margin-right:7px;animation:pulse 1.6s infinite;vertical-align:middle}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.65)}}
+.hero .clock{margin-left:auto;text-align:right}
+.hero .clock .t{font-family:'Orbitron',sans-serif;font-size:30px;color:var(--cyan2);text-shadow:0 0 16px rgba(47,230,255,.5);letter-spacing:.05em;font-variant-numeric:tabular-nums}
+.hero .clock .d{font-size:12px;color:var(--muted);text-transform:capitalize;margin-top:2px}
+
+.cmdbar{position:relative;display:flex;align-items:center;gap:10px;margin-bottom:18px;padding:3px 8px 3px 16px;border-radius:15px;border:1px solid var(--border2);background:var(--panel);box-shadow:inset 0 0 22px rgba(90,60,200,.1)}
+.cmdbar:focus-within{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(47,230,255,.12),inset 0 0 22px rgba(90,60,200,.1)}
+.cmdbar .cmd-ic{font-size:18px;color:var(--cyan2)}
+.cmdbar input{flex:1;border:none;background:transparent;box-shadow:none !important;font-size:15px;padding:14px 4px}
+.cmdbar input:focus{outline:none}
+.cmdbar .kbd{font-size:11px;color:var(--muted2);border:1px solid var(--border);border-radius:6px;padding:3px 7px}
+
 .quick-actions{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
-.qa{display:flex;flex-direction:column;align-items:center;gap:8px;justify-content:center;padding:18px 10px;border-radius:14px;cursor:pointer;
-  background:var(--panel);border:1px solid var(--border);color:var(--text);font-weight:600;font-size:13.5px;font-family:inherit;transition:.15s}
-.qa:hover{border-color:var(--border2);box-shadow:var(--glow) rgba(136,108,255,.3);transform:translateY(-2px);color:#fff}
-.qa .qi{font-size:26px;filter:drop-shadow(0 0 8px rgba(136,108,255,.5))}
+.qa{position:relative;overflow:hidden;display:flex;align-items:center;gap:12px;padding:16px;border-radius:16px;cursor:pointer;text-align:left;
+  background:linear-gradient(135deg,var(--panel),var(--panel2));border:1px solid var(--border);color:var(--text);font-weight:600;font-size:14px;font-family:inherit;transition:.18s}
+.qa::after{content:"";position:absolute;inset:0;opacity:0;transition:.18s;background:linear-gradient(135deg,rgba(47,230,255,.08),rgba(168,85,247,.13))}
+.qa:hover{border-color:var(--border2);transform:translateY(-3px);box-shadow:0 12px 30px rgba(90,40,180,.3);color:#fff}
+.qa:hover::after{opacity:1}
+.qa .qi{position:relative;z-index:1;font-size:24px;filter:drop-shadow(0 0 8px rgba(136,108,255,.6))}
+.qa span:last-child{position:relative;z-index:1}
+
+.kpi{position:relative;overflow:hidden;background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:16px 18px;transition:.18s;cursor:pointer}
+.kpi::before{content:"";position:absolute;left:0;top:0;right:0;height:3px;background:var(--grad)}
+.kpi::after{content:"";position:absolute;right:-28px;top:-28px;width:90px;height:90px;border-radius:50%;opacity:0;transition:.25s;background:radial-gradient(circle,rgba(136,108,255,.28),transparent 70%)}
+.kpi:hover{transform:translateY(-4px);border-color:var(--border2);box-shadow:0 14px 34px rgba(90,40,180,.28)}
+.kpi:hover::after{opacity:1}
+.kpi .k{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;display:flex;align-items:center;gap:6px}
+.kpi .v{font-family:'Orbitron',sans-serif;font-size:26px;margin-top:8px;font-variant-numeric:tabular-nums}
+.kpi .v.sm{font-size:20px}
+
 .dash-mid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
-.sbar{margin-bottom:12px;cursor:pointer}
-.sbar .st{display:flex;justify-content:space-between;align-items:center;font-size:13px;margin-bottom:5px}
-.sbar .st .cnt{color:var(--muted)}
-.sbar .track{height:12px;border-radius:999px;background:rgba(136,108,255,.12);overflow:hidden}
-.sbar .track span{display:block;height:100%;border-radius:999px;transition:width .5s}
-.sbar:hover .track{filter:brightness(1.15)}
-.pend-item{display:flex;align-items:center;gap:10px;padding:9px 11px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px;cursor:pointer;transition:.12s}
-.pend-item:hover{border-color:var(--cyan);background:rgba(47,230,255,.06)}
-.pend-item .pm{margin-left:auto;font-family:'Orbitron';color:var(--cyan2);font-size:13px}
+.sbar{margin-bottom:13px;cursor:pointer}
+.sbar .st{display:flex;justify-content:space-between;align-items:center;font-size:13px;margin-bottom:6px}
+.sbar .st .cnt{color:var(--muted);font-variant-numeric:tabular-nums}
+.sbar .track{height:13px;border-radius:999px;background:rgba(136,108,255,.12);overflow:hidden;position:relative}
+.sbar .track span{display:block;height:100%;width:0;border-radius:999px;transition:width .9s cubic-bezier(.2,.8,.2,1);box-shadow:0 0 12px rgba(136,108,255,.4)}
+.sbar:hover .track{filter:brightness(1.18)}
+.pend-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:11px;margin-bottom:8px;cursor:pointer;transition:.14s}
+.pend-item:hover{border-color:var(--cyan);background:rgba(47,230,255,.06);transform:translateX(3px)}
+.pend-item .pm{margin-left:auto;font-family:'Orbitron',sans-serif;color:var(--cyan2);font-size:13px}
 .continue-btn{display:inline-flex;align-items:center;gap:8px}
-@media(max-width:760px){ .dash-mid{grid-template-columns:1fr} .quick-actions{grid-template-columns:repeat(2,1fr)} }
+@media(max-width:760px){ .dash-mid{grid-template-columns:1fr} .quick-actions{grid-template-columns:repeat(2,1fr)} .hero .clock{margin-left:0} .hero h1{font-size:23px} .hero .clock .t{font-size:24px} }
 
 /* ---------- Buttons ---------- */
 .btn{
@@ -393,21 +445,30 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
 <main>
   <!-- DASHBOARD -->
   <section class="view active" id="view-dash">
-    <div id="dashHello"></div>
-    <div class="dash-search">
-      <input id="globalSearch" placeholder="🔎 Buscar cliente, cotización o producto…" autocomplete="off"
+    <div class="hero reveal">
+      <div class="hero-inner">
+        <div id="dashHello" style="flex:1 1 auto;min-width:200px"></div>
+        <div class="clock">
+          <div class="t" id="dashClock">--:--:--</div>
+          <div class="d" id="dashDate"></div>
+        </div>
+      </div>
+    </div>
+    <div class="cmdbar reveal" style="animation-delay:.05s">
+      <span class="cmd-ic">⌕</span>
+      <input id="globalSearch" placeholder="Buscar cliente, cotización o producto…" autocomplete="off"
              oninput="globalSearch(this.value)" onfocus="globalSearch(this.value)"
              onblur="setTimeout(()=>{const b=document.getElementById('globalResults'); if(b)b.classList.remove('show')},180)">
       <div id="globalResults" class="prod-results"></div>
     </div>
-    <div class="quick-actions">
+    <div class="quick-actions reveal" style="animation-delay:.1s">
       <button class="qa" onclick="newQuote()"><span class="qi">🧾</span><span>Nueva cotización</span></button>
       <button class="qa" onclick="newPlan()"><span class="qi">📐</span><span>Nuevo plano</span></button>
       <button class="qa" onclick="editClient()"><span class="qi">👤</span><span>Nuevo cliente</span></button>
       <button class="qa" onclick="go('catalog')"><span class="qi">🔎</span><span>Catálogo</span></button>
     </div>
-    <div class="grid stats" id="statCards"></div>
-    <div class="dash-mid">
+    <div class="grid stats reveal" id="statCards" style="animation-delay:.15s"></div>
+    <div class="dash-mid reveal" style="animation-delay:.2s">
       <div class="panel">
         <h3 class="mono" style="margin:0 0 14px;font-size:15px">Cotizaciones por estado</h3>
         <div id="statusChart"></div>
@@ -418,7 +479,7 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
         <div id="pendingList"></div>
       </div>
     </div>
-    <div class="panel" style="margin-top:16px">
+    <div class="panel reveal" style="margin-top:16px;animation-delay:.25s">
       <div style="display:flex;align-items:center;margin-bottom:14px"><h3 class="mono" style="margin:0;font-size:15px">Últimas cotizaciones</h3>
         <button class="btn sm ghost" style="margin-left:auto" onclick="go('quotes')">Ver todas →</button></div>
       <div id="recentQuotes"></div>
@@ -746,32 +807,35 @@ async function renderDash(){
   const sum = await api.get('/api/summary').catch(()=>null);
   const byStatus = {}; (sum?.byStatus||[]).forEach(s=>byStatus[s.status]=s);
 
-  // 7) Saludo + fecha + continuar trabajo
+  // 7) Saludo + reloj + continuar trabajo
   const h=new Date().getHours();
   const saludo = h<12?'Buenos días':(h<19?'Buenas tardes':'Buenas noches');
   let hoy=new Date().toLocaleDateString('es-PA',{weekday:'long',day:'numeric',month:'long'}); hoy=hoy.charAt(0).toUpperCase()+hoy.slice(1);
   const nEdit=(S.editing&&S.editing.items)?S.editing.items.filter(it=>it.description||it.unit_price).length:0;
-  const hello=$('dashHello'); hello.className='dash-hello';
-  hello.innerHTML=`<div><h1>${saludo} 👋</h1><div class="date">${hoy}</div></div>
-    <div class="spacer" style="margin-left:auto"></div>
-    ${nEdit?`<button class="btn primary continue-btn" onclick="openCurrentQuote()">▶ Continuar cotización · ${nEdit} ${nEdit===1?'partida':'partidas'}</button>`:''}`;
+  $('dashHello').innerHTML=`<h1><span class="live-dot"></span>${saludo}</h1>
+    <div class="sub">Centro de Cotización · MESHIPPING // TERMINAL</div>
+    ${nEdit?`<button class="btn primary continue-btn" style="margin-top:13px" onclick="openCurrentQuote()">▶ Continuar cotización · ${nEdit} ${nEdit===1?'partida':'partidas'}</button>`:''}`;
+  const dd=$('dashDate'); if(dd) dd.textContent=hoy;
+  startClock();
 
-  // 1) Tarjetas clicables
+  // 1) Tarjetas (con conteo animado)
   _dashCards=[
-    {k:'Cotizaciones', v:sum?.totals.n??0, go:()=>go('quotes')},
-    {k:'Monto total', v:money(sum?.totals.monto||0), sm:true, go:()=>go('quotes')},
-    {k:'Aprobadas', v:byStatus.aprobada?.n||0, go:()=>filterQuotes('aprobada')},
-    {k:'Monto aprobado', v:money(byStatus.aprobada?.monto||0), sm:true, go:()=>filterQuotes('aprobada')},
-    {k:'Clientes', v:sum?.clients??0, go:()=>go('clients')},
+    {k:'Cotizaciones', n:sum?.totals.n??0, ic:'🧾', go:()=>go('quotes')},
+    {k:'Monto total', n:sum?.totals.monto||0, money:1, sm:1, ic:'💵', go:()=>go('quotes')},
+    {k:'Aprobadas', n:byStatus.aprobada?.n||0, ic:'✅', go:()=>filterQuotes('aprobada')},
+    {k:'Monto aprobado', n:byStatus.aprobada?.monto||0, money:1, sm:1, ic:'💰', go:()=>filterQuotes('aprobada')},
+    {k:'Clientes', n:sum?.clients??0, ic:'👥', go:()=>go('clients')},
   ];
-  $('statCards').innerHTML = _dashCards.map((c,i)=>`<div class="stat clk" onclick="_dashCards[${i}].go()"><div class="k">${c.k}</div><div class="v ${c.sm?'sm':''}">${c.v}</div></div>`).join('');
+  $('statCards').innerHTML = _dashCards.map((c,i)=>`<div class="kpi" onclick="_dashCards[${i}].go()"><div class="k"><span class="ic">${c.ic}</span>${c.k}</div><div class="v ${c.sm?'sm':''}" data-to="${c.n}" data-money="${c.money?1:0}">${c.money?money(0):'0'}</div></div>`).join('');
+  animateCounts($('statCards'));
 
-  // 2) Gráfica por estado (clicable)
+  // 2) Gráfica por estado (barras animadas, clicables)
   const order=[['borrador','Borrador','var(--muted)'],['enviada','Enviada','var(--cyan)'],['aprobada','Aprobada','var(--green)'],['rechazada','Rechazada','var(--danger)']];
   const maxN=Math.max(1,...order.map(([k])=>byStatus[k]?.n||0));
-  $('statusChart').innerHTML = order.map(([k,lbl,col])=>{ const n=byStatus[k]?.n||0, mo=byStatus[k]?.monto||0, w=Math.round((n/maxN)*100);
+  $('statusChart').innerHTML = order.map(([k,lbl,col])=>{ const n=byStatus[k]?.n||0, mo=byStatus[k]?.monto||0, w=n?Math.max(Math.round((n/maxN)*100),6):0;
     return `<div class="sbar" onclick="filterQuotes('${k}')"><div class="st"><span>${lbl}</span><span class="cnt">${n} · ${money(mo)}</span></div>
-      <div class="track"><span style="width:${n?Math.max(w,6):0}%;background:${col}"></span></div></div>`; }).join('');
+      <div class="track"><span data-w="${w}" style="width:0;background:${col}"></span></div></div>`; }).join('');
+  requestAnimationFrame(()=>document.querySelectorAll('#statusChart .track span[data-w]').forEach(s=>{ s.style.width=s.dataset.w+'%'; }));
 
   // 5) Pendientes de seguimiento (enviadas)
   const pend=S.quotes.filter(q=>q.status==='enviada').slice(0,6);
@@ -786,6 +850,17 @@ async function renderDash(){
   $('recentQuotes').innerHTML = recent.length ? quoteTable(recent) : emptyBox('Aún no hay cotizaciones','Crea la primera con “Nueva cotización”.');
 }
 function filterQuotes(status){ const el=$('quoteSearch'); if(el) el.value=status; go('quotes'); }
+function animateCounts(scope){ (scope||document).querySelectorAll('.v[data-to]').forEach(el=>{
+  const to=parseFloat(el.dataset.to)||0, isMoney=el.dataset.money==='1', dur=850, t0=performance.now();
+  (function step(t){ const p=Math.min(1,(t-t0)/dur), e=1-Math.pow(1-p,3), val=to*e;
+    el.textContent=isMoney?money(val):Math.round(val).toLocaleString('en-US');
+    if(p<1) requestAnimationFrame(step); })(performance.now());
+}); }
+let _clockTimer=null;
+function startClock(){ if(_clockTimer) return;
+  const tick=()=>{ const el=$('dashClock'); if(!el) return; el.textContent=new Date().toLocaleTimeString('es-PA',{hour12:false}); };
+  tick(); _clockTimer=setInterval(tick,1000);
+}
 // 6) Buscador global del inicio
 function hideGlobal(){ const b=$('globalResults'); if(b) b.classList.remove('show'); }
 function gsGo(id,kind){ hideGlobal(); const inp=$('globalSearch'); if(inp) inp.value='';
