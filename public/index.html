@@ -41,15 +41,21 @@ header.topbar{
   background:rgba(7,6,21,.82);backdrop-filter:blur(14px);
   border-bottom:1px solid var(--border);
 }
-.brand{display:flex;align-items:center;gap:12px;cursor:pointer;user-select:none}
+.brand{display:flex;align-items:center;gap:11px;cursor:pointer;user-select:none}
 .brand .cube{
-  width:40px;height:40px;flex:none;border-radius:10px;position:relative;
-  background:linear-gradient(135deg,#7b2ff7,#c026d3);
-  box-shadow:0 0 18px rgba(168,85,247,.7), inset 0 0 12px rgba(255,255,255,.25);
+  width:42px;height:42px;flex:none;border-radius:11px;position:relative;overflow:hidden;
+  background:radial-gradient(120% 120% at 50% 0%, #1b1442, #0a0820);
+  border:1px solid rgba(136,108,255,.45);
+  box-shadow:0 0 16px rgba(168,85,247,.5);
   display:grid;place-items:center;
 }
-.brand .cube svg{filter:drop-shadow(0 0 6px rgba(25,247,164,.9))}
+.brand .cube img{width:100%;height:100%;object-fit:cover;display:block}
+.brand .cube .arrow{filter:drop-shadow(0 0 3px #19f7a4)}
 .brand .wm{line-height:1}
+.brand-div{width:1px;height:30px;background:var(--border2);margin:0 3px;flex:none}
+.brand-sub{font-size:11.5px;line-height:1.15;color:var(--cyan2);font-weight:600;letter-spacing:.03em;text-shadow:0 0 8px rgba(47,230,255,.35);white-space:nowrap}
+.brand-sub b{display:block;font-family:'Orbitron',sans-serif;font-weight:700;font-size:11.5px}
+@media(max-width:560px){ .brand-div,.brand-sub{display:none} }
 .brand .wm b{
   display:block;font-family:'Orbitron',sans-serif;font-weight:900;font-size:16px;letter-spacing:.12em;
   color:var(--cyan2);text-shadow:0 0 10px rgba(47,230,255,.7);
@@ -359,12 +365,20 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
 
 <header class="topbar">
   <div class="brand" onclick="go('dash')">
-    <div class="cube">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 12h12m0 0l-5-5m5 5l-5 5" stroke="#19f7a4" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <div class="cube" id="brandLogo">
+      <svg width="30" height="30" viewBox="0 0 48 48" fill="none">
+        <path d="M24 5 L41 14.5 L24 24 L7 14.5 Z" fill="#c23be8"/>
+        <path d="M7 14.5 L24 24 L24 43 L7 33.5 Z" fill="#6f29e6"/>
+        <path d="M41 14.5 L24 24 L24 43 L41 33.5 Z" fill="#9a2ff0"/>
+        <path d="M15 10.4 L24 15.4 L19.5 17.9 L10.5 12.9 Z" fill="#e7b4ff" opacity=".85"/>
+        <path class="arrow" d="M29 31 h6.4 M35.4 31 l-2.8 -2.6 M35.4 31 l-2.8 2.6" stroke="#19f7a4" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      </svg>
     </div>
     <div class="wm">
       <b>MESHIPPING</b><span>// TERMINAL</span>
     </div>
+    <div class="brand-div"></div>
+    <div class="brand-sub">Centro de<br><b>Cotización</b></div>
   </div>
   <nav class="tabs" id="tabs">
     <button data-v="dash" class="active">Inicio</button>
@@ -707,8 +721,15 @@ async function boot(){
       api.get('/api/settings'), api.get('/api/clients'), api.get('/api/catalog'), api.get('/api/quotes')
     ]);
     S.settings=settings; S.clients=clients; S.catalog=catalog; S.quotes=quotes;
+    applyBranding();
     renderDash();
   }catch(e){ toast(e.message,true); }
+}
+// Usa el logo real (si se subió en Ajustes) en el header; si no, deja el ícono por defecto
+function applyBranding(){
+  const el=$('brandLogo'); if(!el) return;
+  const logo=S.settings&&S.settings.company_logo;
+  if(logo){ el.innerHTML=`<img src="${esc(logo)}" alt="logo">`; el.style.border='none'; }
 }
 
 // ============================================================
@@ -1277,7 +1298,7 @@ const SETTING_KEYS=['company_name','company_tagline','company_phone','company_em
 function fillSettings(){ SETTING_KEYS.forEach(k=>{ const el=$('s_'+k); if(el) el.value=S.settings[k]??''; }); }
 async function saveSettings(){
   const b={}; SETTING_KEYS.forEach(k=>{ const el=$('s_'+k); if(el) b[k]=el.value; });
-  try{ S.settings=await api.send('PUT','/api/settings',b); toast('Ajustes guardados ✓'); }
+  try{ S.settings=await api.send('PUT','/api/settings',b); applyBranding(); toast('Ajustes guardados ✓'); }
   catch(e){ toast(e.message,true); }
 }
 
