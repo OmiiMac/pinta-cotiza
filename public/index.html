@@ -630,8 +630,13 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
         <label class="f"><span>Email</span><input id="s_company_email"></label>
         <label class="f" style="grid-column:1/-1"><span>Dirección</span><input id="s_company_address"></label>
       </div>
-      <label class="f"><span>Logo (URL o data URL — opcional)</span><input id="s_company_logo" placeholder="Pega el PNG como data URL o deja vacío para usar el wordmark"></label>
-      <div class="hint">Para usar el logo real: colócalo en <b>public/</b> (ej. <code>logo.png</code>) y escribe aquí <code>/logo.png</code>.</div>
+      <label class="f"><span>Logo del header (sube tu PNG o pega una URL)</span><input id="s_company_logo" placeholder="Sube un archivo abajo, o pega la URL del logo" oninput="logoPreview()"></label>
+      <div style="display:flex;align-items:center;gap:10px;margin:-4px 0 10px">
+        <img id="s_logo_prev" src="" style="width:46px;height:46px;object-fit:cover;border-radius:9px;border:1px solid var(--border);display:none" onerror="this.style.display='none'">
+        <label class="btn sm ghost" style="cursor:pointer">📤 Subir logo<input type="file" accept="image/*" style="display:none" onchange="logoFile(event)"></label>
+        <button class="btn sm danger" onclick="$('s_company_logo').value='';logoPreview()">Quitar</button>
+      </div>
+      <div class="hint">Al guardar, el logo aparece arriba a la izquierda, junto a “Centro de Cotización”.</div>
     </div>
     <div class="panel">
       <h3 class="mono" style="margin:0 0 14px;font-size:15px">Cotizaciones</h3>
@@ -1295,7 +1300,9 @@ async function delCatalog(id){
 // SETTINGS
 // ============================================================
 const SETTING_KEYS=['company_name','company_tagline','company_phone','company_email','company_address','company_logo','currency_symbol','tax_name','tax_rate','default_margin','quote_prefix','validity_days','default_coats','default_yield','default_terms'];
-function fillSettings(){ SETTING_KEYS.forEach(k=>{ const el=$('s_'+k); if(el) el.value=S.settings[k]??''; }); }
+function fillSettings(){ SETTING_KEYS.forEach(k=>{ const el=$('s_'+k); if(el) el.value=S.settings[k]??''; }); logoPreview(); }
+function logoPreview(){ const v=$('s_company_logo')?.value, im=$('s_logo_prev'); if(!im) return; if(v){ im.src=v; im.style.display=''; } else im.style.display='none'; }
+function logoFile(e){ const f=e.target.files[0]; if(!f) return; if(f.size>1200000){ toast('Logo muy pesado; usa uno más liviano (<1MB)',true); return; } const rd=new FileReader(); rd.onload=()=>{ $('s_company_logo').value=rd.result; logoPreview(); toast('Logo cargado — dale Guardar ajustes'); }; rd.readAsDataURL(f); }
 async function saveSettings(){
   const b={}; SETTING_KEYS.forEach(k=>{ const el=$('s_'+k); if(el) b[k]=el.value; });
   try{ S.settings=await api.send('PUT','/api/settings',b); applyBranding(); toast('Ajustes guardados ✓'); }
