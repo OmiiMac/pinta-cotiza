@@ -467,6 +467,8 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
         <label class="f"><span>Términos y condiciones</span><textarea id="q_terms"></textarea></label>
       </div>
       <div>
+        <label class="f"><span>💰 Ganancia / utilidad %</span><input type="number" id="q_margin" value="0" min="0" step="1" oninput="recalc()" placeholder="Ej: 40"></label>
+        <div class="hint" style="margin-top:-6px">Las partidas son tu COSTO. La ganancia se suma encima para dar el precio al cliente.</div>
         <div class="row2">
           <label class="f"><span>Descuento</span>
             <select id="q_disc_type" onchange="recalc()">
@@ -479,6 +481,8 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
         </div>
         <label class="f"><span id="taxLabel">Impuesto %</span><input type="number" id="q_tax" value="7" min="0" step="0.01" oninput="recalc()"></label>
         <div class="totals" style="max-width:none">
+          <div class="row"><span>Costo</span><span id="t_cost">$0.00</span></div>
+          <div class="row" id="t_margin_row" style="display:none"><span id="t_margin_lbl">Ganancia</span><span id="t_margin" style="color:var(--green)">$0.00</span></div>
           <div class="row"><span>Subtotal</span><span id="t_sub">$0.00</span></div>
           <div class="row" id="t_disc_row" style="display:none"><span>Descuento</span><span id="t_disc">-$0.00</span></div>
           <div class="row"><span id="t_tax_lbl">ITBMS</span><span id="t_tax">$0.00</span></div>
@@ -860,7 +864,7 @@ function fillEditor(){
   $('q_valid').value=(q.valid_until||'').slice(0,10);
   $('q_notes').value=q.notes||''; $('q_terms').value=q.terms||'';
   $('q_disc_type').value=q.discount_type||'none'; $('q_disc_val').value=q.discount_value||0;
-  $('q_tax').value=q.tax_rate??7;
+  $('q_tax').value=q.tax_rate??7; $('q_margin').value=q.margin_pct||0;
   $('taxLabel').textContent=taxName()+' %'; $('t_tax_lbl').textContent=taxName();
   renderItems();
 }
@@ -930,16 +934,23 @@ function recalc(){
   const q=S.editing; if(!q) return;
   q.discount_type=$('q_disc_type').value; q.discount_value=Number($('q_disc_val').value||0);
   q.tax_rate=Number($('q_tax').value||0);
-  let sub=0; q.items.forEach((it,i)=>{ const lt=lineTotal(it); sub+=lt;
+  q.margin_pct=Number($('q_margin').value||0);
+  let cost=0; q.items.forEach((it,i)=>{ const lt=lineTotal(it); cost+=lt;
     const el=$('itln-'+i); if(el) el.textContent=money(lt);
     const meta=$('itmeta-'+i);
     if(meta){ if(it.is_area){ const area=itemQty(it); const gal=galons(it); meta.textContent=`${area.toFixed(2)} m² · ${gal} gal`; meta.style.display=''; } else meta.style.display='none'; }
   });
+  const marginAmt=cost*q.margin_pct/100;
+  const sub=cost+marginAmt;   // precio de venta antes de descuento
   let disc=0;
   if(q.discount_type==='percent') disc=sub*q.discount_value/100;
   else if(q.discount_type==='amount') disc=q.discount_value;
   disc=Math.min(disc,sub);
   const taxable=sub-disc; const tax=taxable*q.tax_rate/100; const total=taxable+tax;
+  $('t_cost').textContent=money(cost);
+  $('t_margin_row').style.display = marginAmt>0?'flex':'none';
+  $('t_margin_lbl').textContent='Ganancia ('+q.margin_pct+'%)';
+  $('t_margin').textContent='+'+money(marginAmt);
   $('t_sub').textContent=money(sub);
   $('t_disc_row').style.display = disc>0?'flex':'none';
   $('t_disc').textContent='-'+money(disc);
@@ -1011,7 +1022,7 @@ async function saveQuote(){
   q.issue_date=$('q_issue').value; q.valid_until=$('q_valid').value;
   q.notes=$('q_notes').value; q.terms=$('q_terms').value;
   q.discount_type=$('q_disc_type').value; q.discount_value=Number($('q_disc_val').value||0);
-  q.tax_rate=Number($('q_tax').value||0);
+  q.tax_rate=Number($('q_tax').value||0); q.margin_pct=Number($('q_margin').value||0);
   try{
     const payload={...q, items:q.items};
     const saved = q.id ? await api.send('PUT','/api/quotes/'+q.id,payload) : await api.send('POST','/api/quotes',payload);
@@ -1047,13 +1058,15 @@ function printQuote(){
   const q=S.editing; const c=S.clients.find(x=>x.id===$('q_client').value);
   const st=S.settings;
   recalc();
-  let sub=0; q.items.forEach(it=>sub+=lineTotal(it));
+  const factor = 1 + Number($('q_margin').value||0)/100;   // ganancia incluida en el precio al cliente
+  let cost=0; q.items.forEach(it=>cost+=lineTotal(it));
+  let sub=cost*factor;
   let disc=0; const dt=$('q_disc_type').value, dv=Number($('q_disc_val').value||0);
   if(dt==='percent') disc=sub*dv/100; else if(dt==='amount') disc=dv; disc=Math.min(disc,sub);
   const taxable=sub-disc, tax=taxable*Number($('q_tax').value||0)/100, total=taxable+tax;
-  const bd={}; q.items.forEach(it=>{ const lt=lineTotal(it); if(lt>0){ const k=it.cost_type||'otro'; bd[k]=(bd[k]||0)+lt; } });
+  const bd={}; q.items.forEach(it=>{ const lt=lineTotal(it)*factor; if(lt>0){ const k=it.cost_type||'otro'; bd[k]=(bd[k]||0)+lt; } });
   const bdKeys=Object.keys(bd).sort((a,b)=>bd[b]-bd[a]);
-  const bdHtml = (bdKeys.length>1 && sub>0) ? `<div style="margin-top:22px"><div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px">Desglose de costos</div>
+  const bdHtml = (bdKeys.length>1 && sub>0) ? `<div style="margin-top:22px"><div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px">Desglose por rubro</div>
     <table style="border-collapse:collapse;font-size:12.5px;min-width:260px">${bdKeys.map(k=>`<tr><td style="padding:4px 14px 4px 0;color:#444">${COST_LBL[k]||k}</td><td style="padding:4px 0;text-align:right;font-weight:600">${money(bd[k])} <span style="color:#999">· ${Math.round(bd[k]/sub*100)}%</span></td></tr>`).join('')}</table></div>` : '';
   const logo = st.company_logo ? `<img src="${esc(st.company_logo)}" style="max-height:70px">` :
     `<div style="font-family:Orbitron,sans-serif"><div style="font-weight:900;font-size:22px;color:#111;letter-spacing:.08em">MESHIPPING</div><div style="font-weight:700;font-size:12px;letter-spacing:.4em;color:#7b2ff7">// TERMINAL</div></div>`;
@@ -1093,8 +1106,8 @@ function printQuote(){
         <td style="padding:9px 10px;border-bottom:1px solid #eee">${esc(it.description||'')}<div style="font-size:11px;color:#999">${COST_LBL[it.cost_type]||''}</div></td>
         <td style="padding:9px 10px;border-bottom:1px solid #eee;text-align:right">${itemQty(it).toFixed(2)}</td>
         <td style="padding:9px 10px;border-bottom:1px solid #eee;text-align:center">${esc(it.unit||'')}</td>
-        <td style="padding:9px 10px;border-bottom:1px solid #eee;text-align:right">${money(it.unit_price)}</td>
-        <td style="padding:9px 10px;border-bottom:1px solid #eee;text-align:right">${money(lineTotal(it))}</td>
+        <td style="padding:9px 10px;border-bottom:1px solid #eee;text-align:right">${money(it.unit_price*factor)}</td>
+        <td style="padding:9px 10px;border-bottom:1px solid #eee;text-align:right">${money(lineTotal(it)*factor)}</td>
       </tr>`).join('')}
       </tbody>
     </table>

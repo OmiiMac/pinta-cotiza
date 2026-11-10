@@ -70,6 +70,7 @@ CREATE TABLE IF NOT EXISTS quotes (
   issue_date      TEXT,
   valid_until     TEXT,
   tax_rate        REAL DEFAULT 0,
+  margin_pct      REAL DEFAULT 0,
   discount_type   TEXT DEFAULT 'none',
   discount_value  REAL DEFAULT 0,
   notes           TEXT,
@@ -126,6 +127,7 @@ function ensureCol(table, col, def) {
 ensureCol('quote_items', 'cost_type', "TEXT DEFAULT 'otro'");
 ensureCol('catalog',     'cost_type', "TEXT DEFAULT 'materiales'");
 ensureCol('catalog',     'image',     "TEXT");
+ensureCol('quotes',      'margin_pct', "REAL DEFAULT 0");
 
 // ---------- Valores por defecto (primera corrida) ----------
 const DEFAULT_META = {
@@ -189,9 +191,13 @@ function computeItem(it) {
 
 // Recalcula todos los totales de una cotizacion a partir de sus partidas
 function computeTotals(quote, items) {
-  let subtotal = 0;
-  for (const it of items) subtotal += num(it.line_total);
-  subtotal = r2(subtotal);
+  // La suma de las partidas es el COSTO; se le aplica la ganancia (margin_pct)
+  // para obtener el precio de venta (subtotal).
+  let cost = 0;
+  for (const it of items) cost += num(it.line_total);
+  cost = r2(cost);
+  const marginAmount = r2(cost * num(quote.margin_pct) / 100);
+  const subtotal = r2(cost + marginAmount); // precio de venta antes de descuento
 
   let discount = 0;
   if (quote.discount_type === 'percent') discount = r2(subtotal * num(quote.discount_value) / 100);
@@ -359,15 +365,16 @@ app.post('/api/quotes', wrap((req, res) => {
     client_id: b.client_id || null, title: str(b.title),
     status: str(b.status) || 'borrador', issue_date: issue, valid_until: validUntil,
     tax_rate: b.tax_rate == null ? num(metaGet('tax_rate'), 0) : num(b.tax_rate),
+    margin_pct: num(b.margin_pct),
     discount_type: str(b.discount_type) || 'none', discount_value: num(b.discount_value),
     notes: str(b.notes), terms: b.terms == null ? (metaGet('default_terms') || '') : str(b.terms)
   };
   tx(() => {
     db.prepare(`INSERT INTO quotes
-      (id,number,client_id,title,status,issue_date,valid_until,tax_rate,discount_type,discount_value,notes,terms,subtotal,discount_amount,tax_amount,total,created_at,updated_at)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,0,0,0,0,?,?)`)
+      (id,number,client_id,title,status,issue_date,valid_until,tax_rate,margin_pct,discount_type,discount_value,notes,terms,subtotal,discount_amount,tax_amount,total,created_at,updated_at)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,0,0,0,0,?,?)`)
       .run(quote.id, quote.number, quote.client_id, quote.title, quote.status, quote.issue_date,
-           quote.valid_until, quote.tax_rate, quote.discount_type, quote.discount_value,
+           quote.valid_until, quote.tax_rate, quote.margin_pct, quote.discount_type, quote.discount_value,
            quote.notes, quote.terms, t, t);
     saveQuoteItems(id, b.items, quote);
   });
@@ -386,6 +393,7 @@ app.put('/api/quotes/:id', wrap((req, res) => {
     issue_date: b.issue_date === undefined ? cur.issue_date : str(b.issue_date),
     valid_until: b.valid_until === undefined ? cur.valid_until : str(b.valid_until),
     tax_rate: b.tax_rate === undefined ? cur.tax_rate : num(b.tax_rate),
+    margin_pct: b.margin_pct === undefined ? cur.margin_pct : num(b.margin_pct),
     discount_type: b.discount_type === undefined ? cur.discount_type : str(b.discount_type),
     discount_value: b.discount_value === undefined ? cur.discount_value : num(b.discount_value),
     notes: b.notes === undefined ? cur.notes : str(b.notes),
@@ -393,9 +401,9 @@ app.put('/api/quotes/:id', wrap((req, res) => {
   };
   tx(() => {
     db.prepare(`UPDATE quotes SET client_id=?, title=?, status=?, issue_date=?, valid_until=?,
-      tax_rate=?, discount_type=?, discount_value=?, notes=?, terms=?, updated_at=? WHERE id=?`)
+      tax_rate=?, margin_pct=?, discount_type=?, discount_value=?, notes=?, terms=?, updated_at=? WHERE id=?`)
       .run(quote.client_id, quote.title, quote.status, quote.issue_date, quote.valid_until,
-           quote.tax_rate, quote.discount_type, quote.discount_value, quote.notes, quote.terms,
+           quote.tax_rate, quote.margin_pct, quote.discount_type, quote.discount_value, quote.notes, quote.terms,
            now(), cur.id);
     if (b.items !== undefined) saveQuoteItems(cur.id, b.items, quote);
     else { // recalcular con partidas existentes (por si cambio impuesto/descuento)
@@ -425,16 +433,16 @@ app.post('/api/quotes/:id/duplicate', wrap((req, res) => {
   const quote = {
     id, client_id: src.client_id, title: src.title ? src.title + ' (copia)' : '',
     status: 'borrador', issue_date: t.slice(0, 10), valid_until: src.valid_until,
-    tax_rate: src.tax_rate, discount_type: src.discount_type, discount_value: src.discount_value,
+    tax_rate: src.tax_rate, margin_pct: src.margin_pct, discount_type: src.discount_type, discount_value: src.discount_value,
     notes: src.notes, terms: src.terms
   };
   tx(() => {
     const number = nextQuoteNumber();
     db.prepare(`INSERT INTO quotes
-      (id,number,client_id,title,status,issue_date,valid_until,tax_rate,discount_type,discount_value,notes,terms,subtotal,discount_amount,tax_amount,total,created_at,updated_at)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,0,0,0,0,?,?)`)
+      (id,number,client_id,title,status,issue_date,valid_until,tax_rate,margin_pct,discount_type,discount_value,notes,terms,subtotal,discount_amount,tax_amount,total,created_at,updated_at)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,0,0,0,0,?,?)`)
       .run(id, number, quote.client_id, quote.title, quote.status, quote.issue_date, quote.valid_until,
-           quote.tax_rate, quote.discount_type, quote.discount_value, quote.notes, quote.terms, t, t);
+           quote.tax_rate, quote.margin_pct, quote.discount_type, quote.discount_value, quote.notes, quote.terms, t, t);
     saveQuoteItems(id, src.items, quote);
   });
   res.json(getQuoteFull(id));
