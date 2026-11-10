@@ -6,29 +6,28 @@
 <title>MESHIPPING // TERMINAL — Cotizador</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Playfair+Display:wght@600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
-  /* === PINTURA VIVA — estudio de pintura === */
-  --bg:#120d10; --bg2:#1a1216; --bg3:#231820;
-  --panel:rgba(36,25,33,.72); --panel2:rgba(52,36,46,.5);
-  --border:rgba(255,180,150,.18); --border2:rgba(255,180,150,.38);
-  /* --cyan y --cyan2 = color de acento (se "pinta" con los swatches) */
-  --cyan:#17c3b2; --cyan2:#5ff0df;
-  --violet:#ff6b9d; --magenta:#ff5d5d;
-  --green:#8ce05a; --blue:#37a0f4; --text:#fbeee6; --muted:#c7a79c; --muted2:#8f7268;
-  --danger:#ff5a6e; --warn:#ffb13c; --ok:#8ce05a;
+  /* === NEGRO + ORO — lujo === */
+  --bg:#09090a; --bg2:#101011; --bg3:#17161a;
+  --panel:rgba(22,21,24,.74); --panel2:rgba(34,31,27,.5);
+  --border:rgba(212,175,55,.18); --border2:rgba(212,175,55,.42);
+  /* --cyan y --cyan2 = acento (oro) — ajustable con los tonos metálicos */
+  --cyan:#d4af37; --cyan2:#f0d98a;
+  --violet:#e6c878; --magenta:#b8860b;
+  --green:#3fb787; --blue:#9aa6bf; --text:#f4ecd8; --muted:#bcae92; --muted2:#847a62;
+  --danger:#e0637a; --warn:#e6c878; --ok:#3fb787;
   --radius:14px; --glow:0 0 22px;
-  --grad:linear-gradient(135deg,var(--magenta),var(--warn) 45%,var(--cyan));
+  --grad:linear-gradient(135deg,#b8860b,#d4af37 48%,#f3e3a6);
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
 body{
   background:
-    radial-gradient(900px 620px at 12% -8%, rgba(255,93,93,.18), transparent 60%),
-    radial-gradient(820px 560px at 96% -4%, rgba(255,177,60,.16), transparent 58%),
-    radial-gradient(760px 620px at 82% 108%, rgba(23,195,178,.16), transparent 60%),
-    radial-gradient(700px 600px at 20% 115%, rgba(255,107,157,.13), transparent 60%),
+    radial-gradient(1000px 680px at 15% -10%, rgba(212,175,55,.14), transparent 60%),
+    radial-gradient(900px 600px at 95% -4%, rgba(230,200,120,.09), transparent 58%),
+    radial-gradient(760px 640px at 80% 112%, rgba(184,134,11,.12), transparent 60%),
     var(--bg);
   color:var(--text); font-family:'Space Grotesk',system-ui,sans-serif; font-size:15px;
   min-height:100vh;
@@ -39,7 +38,7 @@ button{font-family:inherit}
 
 /* Rejilla tecnológica que se desplaza lentamente, detrás de toda la app */
 body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.5;
-  background-image:linear-gradient(rgba(136,108,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(136,108,255,.05) 1px,transparent 1px);
+  background-image:linear-gradient(rgba(212,175,55,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(212,175,55,.045) 1px,transparent 1px);
   background-size:44px 44px;
   -webkit-mask:radial-gradient(circle at 50% 0%, #000, transparent 78%);mask:radial-gradient(circle at 50% 0%, #000, transparent 78%);
   animation:griddrift 34s linear infinite}
@@ -124,13 +123,12 @@ main{max-width:1180px;margin:0 auto;padding:26px 22px 80px}
 @keyframes fadeUp{to{opacity:1;transform:none}}
 
 .hero{position:relative;overflow:hidden;border:1px solid var(--border2);border-radius:22px;padding:28px 28px;margin-bottom:16px;
-  background:linear-gradient(135deg, rgba(123,47,247,.16), rgba(10,8,32,.35) 45%, rgba(47,230,255,.1))}
-.hero::before{content:"";position:absolute;inset:-45%;z-index:0;filter:blur(30px);animation:aurora 16s ease-in-out infinite;
+  background:linear-gradient(135deg, rgba(212,175,55,.12), rgba(9,9,10,.5) 50%, rgba(184,134,11,.08))}
+.hero::before{content:"";position:absolute;inset:-45%;z-index:0;filter:blur(34px);animation:aurora 18s ease-in-out infinite;
   background:
-   radial-gradient(34% 44% at 16% 26%, rgba(255,93,93,.55), transparent 60%),
-   radial-gradient(34% 44% at 84% 16%, rgba(255,177,60,.5), transparent 60%),
-   radial-gradient(36% 46% at 50% 98%, rgba(23,195,178,.42), transparent 60%),
-   radial-gradient(30% 40% at 72% 70%, rgba(255,107,157,.4), transparent 60%)}
+   radial-gradient(36% 46% at 18% 24%, rgba(212,175,55,.42), transparent 62%),
+   radial-gradient(34% 44% at 84% 18%, rgba(243,227,166,.3), transparent 62%),
+   radial-gradient(40% 50% at 60% 100%, rgba(184,134,11,.3), transparent 62%)}
 .hero::after{content:"";position:absolute;inset:0;z-index:0;opacity:.45;
   background-image:linear-gradient(rgba(136,108,255,.10) 1px,transparent 1px),linear-gradient(90deg,rgba(136,108,255,.10) 1px,transparent 1px);
   background-size:36px 36px;-webkit-mask:radial-gradient(circle at 50% 35%, #000 25%, transparent 78%);mask:radial-gradient(circle at 50% 35%, #000 25%, transparent 78%)}
@@ -423,6 +421,14 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
   .page-head{gap:8px}
   .stat .v{font-size:20px}
 }
+
+/* ---------- NEGRO + ORO: tipografía de lujo y detalles ---------- */
+.brand .wm b,.hero h1,.page-head h1,.brand-sub b{font-family:'Playfair Display',Georgia,serif;letter-spacing:.02em}
+.brand .wm b{font-weight:800}
+.hero h1{font-weight:800;font-size:30px}
+.kpi .v,.hero .clock .t,.totals .row.grand b,.plan-total{font-family:'Playfair Display',Georgia,serif}
+.btn.primary,.btn.green{color:#1a1403}
+.badge.aprobada{color:var(--cyan2)}
 </style>
 </head>
 <body>
@@ -851,7 +857,7 @@ async function renderDash(){
     {k:'Monto aprobado', n:byStatus.aprobada?.monto||0, money:1, sm:1, ic:'💰', go:()=>filterQuotes('aprobada')},
     {k:'Clientes', n:sum?.clients??0, ic:'👥', go:()=>go('clients')},
   ];
-  const KPI_COLORS=['#17c3b2','#ff5d5d','#8ce05a','#ffb13c','#37a0f4'];
+  const KPI_COLORS=['#d4af37','#e6c878','#f3e3a6','#cd7f32','#e8b4a0'];
   $('statCards').innerHTML = _dashCards.map((c,i)=>`<div class="kpi" style="--kc:${KPI_COLORS[i%KPI_COLORS.length]}" onclick="_dashCards[${i}].go()"><div class="k"><span class="ic">${c.ic}</span>${c.k}</div><div class="v ${c.sm?'sm':''}" style="color:${KPI_COLORS[i%KPI_COLORS.length]}" data-to="${c.n}" data-money="${c.money?1:0}">${c.money?money(0):'0'}</div></div>`).join('');
   animateCounts($('statCards'));
   renderSwatches();
@@ -889,15 +895,16 @@ function startClock(){ if(_clockTimer) return;
   tick(); _clockTimer=setInterval(tick,1000);
 }
 // === PINTURA VIVA: swatches que repintan el acento de toda la app ===
-const SWATCHES=[{n:'Teal',c:'#17c3b2'},{n:'Coral',c:'#ff5d5d'},{n:'Mango',c:'#ffb13c'},{n:'Lima',c:'#8ce05a'},{n:'Cielo',c:'#37a0f4'},{n:'Uva',c:'#9b5de5'},{n:'Fucsia',c:'#ff5da2'}];
-function currentAccent(){ try{ return localStorage.getItem('pv_accent')||'#17c3b2'; }catch(e){ return '#17c3b2'; } }
+const DEFAULT_ACCENT='#d4af37';
+const SWATCHES=[{n:'Oro',c:'#d4af37'},{n:'Champán',c:'#e6c878'},{n:'Oro claro',c:'#f3e3a6'},{n:'Bronce',c:'#cd7f32'},{n:'Oro rosa',c:'#e8b4a0'},{n:'Platino',c:'#cfd3dc'}];
+function currentAccent(){ try{ const v=localStorage.getItem('pv_accent'); return (v&&SWATCHES.some(s=>s.c===v))?v:DEFAULT_ACCENT; }catch(e){ return DEFAULT_ACCENT; } }
 function lighten(hex,amt){ const n=hex.replace('#',''); const r=parseInt(n.slice(0,2),16),g=parseInt(n.slice(2,4),16),b=parseInt(n.slice(4,6),16); const f=x=>Math.round(x+(255-x)*amt).toString(16).padStart(2,'0'); return '#'+f(r)+f(g)+f(b); }
 function setAccent(hex){ const r=document.documentElement; r.style.setProperty('--cyan',hex); r.style.setProperty('--cyan2',lighten(hex,.38));
   try{ localStorage.setItem('pv_accent',hex); }catch(e){}
   document.querySelectorAll('#swatches .swatch').forEach(s=>s.classList.toggle('on', s.dataset.c===hex)); }
 function applyAccent(){ setAccent(currentAccent()); }
 function renderSwatches(){ const el=$('swatches'); if(!el) return; const cur=currentAccent();
-  el.innerHTML='<span class="sw-lbl">🎨 Pinta tu app</span>'+SWATCHES.map(s=>`<button class="swatch ${s.c===cur?'on':''}" style="background:${s.c}" data-c="${s.c}" title="${s.n}" onclick="setAccent('${s.c}')"></button>`).join(''); }
+  el.innerHTML='<span class="sw-lbl">✦ Acento</span>'+SWATCHES.map(s=>`<button class="swatch ${s.c===cur?'on':''}" style="background:${s.c}" data-c="${s.c}" title="${s.n}" onclick="setAccent('${s.c}')"></button>`).join(''); }
 // 6) Buscador global del inicio
 function hideGlobal(){ const b=$('globalResults'); if(b) b.classList.remove('show'); }
 function gsGo(id,kind){ hideGlobal(); const inp=$('globalSearch'); if(inp) inp.value='';
