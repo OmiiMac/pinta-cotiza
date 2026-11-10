@@ -723,7 +723,7 @@ async function renderDash(){
   const hello=$('dashHello'); hello.className='dash-hello';
   hello.innerHTML=`<div><h1>${saludo} 👋</h1><div class="date">${hoy}</div></div>
     <div class="spacer" style="margin-left:auto"></div>
-    ${nEdit?`<button class="btn primary continue-btn" onclick="openCurrentQuote()">▶ Continuar cotización (${nEdit})</button>`:''}`;
+    ${nEdit?`<button class="btn primary continue-btn" onclick="openCurrentQuote()">▶ Continuar cotización · ${nEdit} ${nEdit===1?'partida':'partidas'}</button>`:''}`;
 
   // 1) Tarjetas clicables
   _dashCards=[
@@ -844,7 +844,7 @@ function updateQuoteFab(){
   const fab=$('quoteFab'); if(!fab) return;
   const n=S.editing&&S.editing.items?S.editing.items.filter(it=>it.description||it.unit_price).length:0;
   const inEditor=document.getElementById('view-editor').classList.contains('active');
-  if(n>0 && !inEditor){ fab.style.display='flex'; $('fabCount').textContent=n; } else fab.style.display='none';
+  if(n>0 && !inEditor){ fab.style.display='flex'; fab.innerHTML=`🧾 Ver cotización · ${n} ${n===1?'partida':'partidas'}`; } else fab.style.display='none';
 }
 async function openQuote(id){
   try{ S.editing = await api.get('/api/quotes/'+id); if(!S.editing.items.length) S.editing.items=[blankItem()]; fillEditor(); go('editor'); }
