@@ -153,7 +153,14 @@ const DEFAULT_META = {
   desperdicio:     '12',          // % de desperdicio de material
   umbral_vano:     '1.5',         // m2: vanos <= no descuentan material
   tarifa_base_m2:  '12',          // mano de obra por m2 (rodillo)
-  tarifa_recorte_ml:'4.5'         // mano de obra por metro lineal de recorte/perfilado
+  tarifa_recorte_ml:'4.5',        // mano de obra por metro lineal de recorte/perfilado
+  // --- Niveles Basico/Estandar/Premium ---
+  niveles_on:         '1',        // mostrar niveles en la cotizacion impresa
+  nivel_basico_factor:'0.88',     // precio = total x factor
+  nivel_premium_factor:'1.25',
+  nivel_basico_desc:  'Materiales estandar, preparacion minima, 1 mano segun superficie.',
+  nivel_estandar_desc:'Pintura de alta durabilidad, preparacion completa, 2 manos y garantia.',
+  nivel_premium_desc: 'Materiales premium/ecologicos, reparaciones integrales, limpieza profunda post-obra y garantia extendida.'
 };
 function metaGet(key) {
   const r = db.prepare('SELECT value FROM meta WHERE key=?').get(key);

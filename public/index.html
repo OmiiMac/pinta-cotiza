@@ -414,6 +414,16 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
 .cc.total{border-color:var(--border2);background:linear-gradient(135deg,rgba(212,175,55,.14),var(--panel2))}
 .cc.total b{color:var(--cyan2);font-size:20px}
 
+/* ---------- Niveles ---------- */
+.niv-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:12px}
+.niv{position:relative;border:1px solid var(--border);border-radius:14px;padding:16px 14px;background:var(--panel2);text-align:center}
+.niv.rec{border-color:var(--border2);background:linear-gradient(135deg,rgba(212,175,55,.14),var(--panel2));box-shadow:0 0 0 1px var(--border2)}
+.niv-tag{position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:var(--grad);color:#1a1403;font-size:10px;font-weight:800;padding:3px 10px;border-radius:999px;letter-spacing:.04em}
+.niv-n{font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-weight:700}
+.niv-p{font-size:24px;font-weight:800;margin:6px 0 8px;color:var(--cyan2)}
+.niv-d{font-size:12px;color:var(--muted);line-height:1.4}
+@media(max-width:620px){.niv-grid{grid-template-columns:1fr}}
+
 /* ---------- Print ---------- */
 .print-only{display:none}
 @media print{
@@ -591,6 +601,7 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
       <span id="editorStatus"></span>
       <div class="spacer"></div>
       <button class="btn sm" onclick="printQuote()">🖨 Imprimir / PDF</button>
+      <button class="btn sm ghost" onclick="printWorkOrder()">🛠 Orden de trabajo</button>
       <button class="btn green" onclick="saveQuote()">Guardar</button>
     </div>
 
@@ -668,6 +679,15 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
         <span class="hint" style="margin:0 0 0 12px">Basado en partidas por área, su rendimiento y nº de manos.</span>
       </div>
       <div id="matList" class="mat-list" style="margin-top:12px"></div>
+    </div>
+
+    <!-- Niveles Básico / Estándar / Premium -->
+    <div class="panel" id="nivelesPanel">
+      <div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:6px">
+        <h3 class="ttl">🏷️ Opciones para el cliente (Básico / Estándar / Premium)</h3>
+        <span class="hint" style="margin:0">Tres precios para subir el cierre. El “Estándar” es esta cotización detallada.</span>
+      </div>
+      <div id="nivelesCards"></div>
     </div>
   </section>
 
@@ -809,6 +829,27 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
         <label class="f"><span>Rendimiento m²/galón</span><input type="number" id="s_default_yield"></label>
       </div>
       <label class="f"><span>Términos por defecto</span><textarea id="s_default_terms"></textarea></label>
+    </div>
+    <div class="panel">
+      <h3 class="ttl" style="margin:0 0 14px">🧮 Motor de cálculo (defaults)</h3>
+      <div class="form-grid">
+        <label class="f"><span>Precio por galón</span><input type="number" step="0.01" id="s_precio_galon"></label>
+        <label class="f"><span>% desperdicio</span><input type="number" step="1" id="s_desperdicio"></label>
+        <label class="f"><span>Umbral vano (m²)</span><input type="number" step="0.1" id="s_umbral_vano"></label>
+        <label class="f"><span>M.O. base ($/m²)</span><input type="number" step="0.5" id="s_tarifa_base_m2"></label>
+        <label class="f"><span>M.O. recorte ($/ml)</span><input type="number" step="0.5" id="s_tarifa_recorte_ml"></label>
+      </div>
+    </div>
+    <div class="panel">
+      <h3 class="ttl" style="margin:0 0 14px">🏷️ Niveles (Básico / Estándar / Premium)</h3>
+      <div class="form-grid">
+        <label class="f"><span>Mostrar niveles en el PDF</span><select id="s_niveles_on"><option value="1">Sí</option><option value="0">No</option></select></label>
+        <label class="f"><span>Factor Básico (ej. 0.88)</span><input type="number" step="0.01" id="s_nivel_basico_factor"></label>
+        <label class="f"><span>Factor Premium (ej. 1.25)</span><input type="number" step="0.01" id="s_nivel_premium_factor"></label>
+      </div>
+      <label class="f"><span>Qué incluye el Básico</span><textarea id="s_nivel_basico_desc"></textarea></label>
+      <label class="f"><span>Qué incluye el Estándar</span><textarea id="s_nivel_estandar_desc"></textarea></label>
+      <label class="f"><span>Qué incluye el Premium</span><textarea id="s_nivel_premium_desc"></textarea></label>
     </div>
   </section>
 </main>
@@ -1194,8 +1235,58 @@ function recalc(){
   $('t_total').textContent=money(total);
   renderMaterials();
   renderBreakdown();
+  renderNiveles(total);
 }
-function renderBreakdown(){
+function nivelFactors(){ const s=S.settings||{}; return {
+  basico:Number(s.nivel_basico_factor||0.88), premium:Number(s.nivel_premium_factor||1.25),
+  dB:s.nivel_basico_desc||'', dE:s.nivel_estandar_desc||'', dP:s.nivel_premium_desc||'' }; }
+function renderNiveles(total){
+  const el=$('nivelesCards'); if(!el) return; const f=nivelFactors();
+  const niv=[
+    {n:'Básico', p:total*f.basico, d:f.dB, rec:false},
+    {n:'Estándar', p:total, d:f.dE, rec:true},
+    {n:'Premium', p:total*f.premium, d:f.dP, rec:false},
+  ];
+  el.innerHTML='<div class="niv-grid">'+niv.map(x=>`<div class="niv ${x.rec?'rec':''}">
+      ${x.rec?'<div class="niv-tag">Recomendado</div>':''}
+      <div class="niv-n">${x.n}</div>
+      <div class="niv-p">${money(x.p)}</div>
+      <div class="niv-d">${esc(x.d)}</div></div>`).join('')+'</div>';
+}
+function printWorkOrder(){
+  const q=S.editing; if(!q){ toast('Abre una cotización',true); return; }
+  const c=S.clients.find(x=>x.id===$('q_client').value), st=S.settings;
+  const items=q.items.filter(it=>it.description);
+  if(!items.length){ toast('No hay partidas',true); return; }
+  const rows=items.map(it=>`<tr>
+    <td style="padding:8px 10px;border-bottom:1px solid #eee">${esc(it.description||'')}<div style="font-size:11px;color:#999">${COST_LBL[it.cost_type]||''}</div></td>
+    <td style="padding:8px 10px;border-bottom:1px solid #eee;text-align:right">${itemQty(it).toFixed(2)}</td>
+    <td style="padding:8px 10px;border-bottom:1px solid #eee;text-align:center">${esc(it.unit||'')}</td>
+    <td style="padding:8px 10px;border-bottom:1px solid #eee;width:70px"></td></tr>`).join('');
+  $('printArea').innerHTML=`<div style="font-family:Arial,sans-serif;color:#111;padding:34px 40px;max-width:800px;margin:0 auto">
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #111;padding-bottom:12px">
+      <div><div style="font-weight:900;font-size:21px;letter-spacing:.02em">ORDEN DE TRABAJO</div><div style="font-size:12px;color:#555">${esc(st.company_name||'MESHIPPING // TERMINAL')}</div></div>
+      <div style="text-align:right;font-size:12px"><div style="font-weight:700">${esc(q.number||'')}</div><div>${fmtDate($('q_issue').value)}</div></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-top:16px;font-size:13px">
+      <div><b>Cliente:</b> ${esc(c?.name||'—')}<br><span style="color:#555">${esc(c?.address||'')} ${c?.phone?'· '+esc(c.phone):''}</span></div>
+      <div style="text-align:right"><b>Proyecto:</b> ${esc(q.title||'')}</div>
+    </div>
+    <div style="font-size:11px;color:#9a1b1b;border:1px solid #e3b7b7;background:#fdf4f4;border-radius:6px;padding:8px 10px;margin-top:14px"><b>DOCUMENTO INTERNO — SIN PRECIOS.</b> Para la cuadrilla.</div>
+    <table style="width:100%;border-collapse:collapse;margin-top:14px;font-size:13px">
+      <thead><tr style="background:#f2f2f2">
+        <th style="text-align:left;padding:8px 10px;border-bottom:2px solid #111">Tarea</th>
+        <th style="text-align:right;padding:8px 10px;border-bottom:2px solid #111">Cant.</th>
+        <th style="text-align:center;padding:8px 10px;border-bottom:2px solid #111">Unid.</th>
+        <th style="text-align:center;padding:8px 10px;border-bottom:2px solid #111">Hecho</th></tr></thead>
+      <tbody>${rows}</tbody></table>
+    ${q.notes?`<div style="margin-top:16px"><b style="font-size:12px">Notas / alcance:</b><div style="font-size:12px;color:#444;white-space:pre-wrap;margin-top:4px">${esc(q.notes)}</div></div>`:''}
+    <div style="margin-top:22px;font-size:12px"><b>Observaciones en obra:</b><div style="border:1px solid #ccc;border-radius:6px;height:90px;margin-top:6px"></div></div>
+    <div style="display:flex;justify-content:space-between;margin-top:28px;font-size:12px;color:#444">
+      <div>Responsable: _______________________</div><div>Fecha de término: ______________</div></div>
+  </div>`;
+  window.print();
+}
   const g={}; let tot=0;
   S.editing.items.forEach(it=>{ const lt=lineTotal(it); if(lt<=0) return; const k=it.cost_type||'otro'; g[k]=(g[k]||0)+lt; tot+=lt; });
   const keys=Object.keys(g).sort((a,b)=>g[b]-g[a]);
@@ -1303,6 +1394,17 @@ function printQuote(){
   const bdKeys=Object.keys(bd).sort((a,b)=>bd[b]-bd[a]);
   const bdHtml = (bdKeys.length>1 && sub>0) ? `<div style="margin-top:22px"><div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px">Desglose por rubro</div>
     <table style="border-collapse:collapse;font-size:12.5px;min-width:260px">${bdKeys.map(k=>`<tr><td style="padding:4px 14px 4px 0;color:#444">${COST_LBL[k]||k}</td><td style="padding:4px 0;text-align:right;font-weight:600">${money(bd[k])} <span style="color:#999">· ${Math.round(bd[k]/sub*100)}%</span></td></tr>`).join('')}</table></div>` : '';
+  // Niveles Básico/Estándar/Premium para el cliente
+  let nivHtml='';
+  if((st.niveles_on||'1')==='1' && total>0){ const f=nivelFactors();
+    const niv=[['Básico',total*f.basico,f.dB,false],['Estándar',total,f.dE,true],['Premium',total*f.premium,f.dP,false]];
+    nivHtml=`<div style="margin-top:26px"><div style="font-size:13px;font-weight:700;color:#111;margin-bottom:10px">Opciones del proyecto</div>
+      <div style="display:flex;gap:10px">${niv.map(([n,p,d,rec])=>`<div style="flex:1;border:1px solid ${rec?'#7b2ff7':'#e3e3e3'};border-radius:10px;padding:12px;${rec?'background:#faf7ff':''}">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#888;font-weight:700">${n}${rec?' · Recomendado':''}</div>
+        <div style="font-size:19px;font-weight:800;margin:4px 0 6px;color:${rec?'#7b2ff7':'#111'}">${money(p)}</div>
+        <div style="font-size:11px;color:#666;line-height:1.4">${esc(d)}</div></div>`).join('')}</div>
+      <div style="font-size:10px;color:#aaa;margin-top:6px">Esta cotización corresponde al nivel Estándar. Básico y Premium son referenciales.</div></div>`;
+  }
   const logo = st.company_logo ? `<img src="${esc(st.company_logo)}" style="max-height:70px">` :
     `<div style="font-family:Orbitron,sans-serif"><div style="font-weight:900;font-size:22px;color:#111;letter-spacing:.08em">MESHIPPING</div><div style="font-weight:700;font-size:12px;letter-spacing:.4em;color:#7b2ff7">// TERMINAL</div></div>`;
   $('printArea').innerHTML = `
@@ -1355,6 +1457,7 @@ function printQuote(){
       </div>
     </div>
     ${bdHtml}
+    ${nivHtml}
     ${q.notes?`<div style="margin-top:20px"><div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.1em">Notas</div><div style="font-size:13px;color:#444;white-space:pre-wrap">${esc(q.notes)}</div></div>`:''}
     ${q.terms?`<div style="margin-top:16px"><div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.1em">Términos</div><div style="font-size:12px;color:#666;white-space:pre-wrap">${esc(q.terms)}</div></div>`:''}
     <div style="margin-top:40px;text-align:center;font-size:11px;color:#aaa">Generado por MESHIPPING // TERMINAL · ${new Date().toLocaleDateString('es-PA')}</div>
@@ -1507,7 +1610,7 @@ async function delCatalog(id){
 // ============================================================
 // SETTINGS
 // ============================================================
-const SETTING_KEYS=['company_name','company_tagline','company_phone','company_email','company_address','company_logo','currency_symbol','tax_name','tax_rate','default_margin','quote_prefix','validity_days','default_coats','default_yield','default_terms'];
+const SETTING_KEYS=['company_name','company_tagline','company_phone','company_email','company_address','company_logo','currency_symbol','tax_name','tax_rate','default_margin','quote_prefix','validity_days','default_coats','default_yield','default_terms','precio_galon','desperdicio','umbral_vano','tarifa_base_m2','tarifa_recorte_ml','niveles_on','nivel_basico_factor','nivel_premium_factor','nivel_basico_desc','nivel_estandar_desc','nivel_premium_desc'];
 function fillSettings(){ SETTING_KEYS.forEach(k=>{ const el=$('s_'+k); if(el) el.value=S.settings[k]??''; }); logoPreview(); }
 function logoPreview(){ const v=$('s_company_logo')?.value, im=$('s_logo_prev'); if(!im) return; if(v){ im.src=v; im.style.display=''; } else im.style.display='none'; }
 function logoFile(e){ const f=e.target.files[0]; if(!f) return; if(f.size>1200000){ toast('Logo muy pesado; usa uno más liviano (<1MB)',true); return; } const rd=new FileReader(); rd.onload=()=>{ $('s_company_logo').value=rd.result; logoPreview(); toast('Logo cargado — dale Guardar ajustes'); }; rd.readAsDataURL(f); }
