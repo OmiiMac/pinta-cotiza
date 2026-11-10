@@ -6,7 +6,7 @@
 <title>MESHIPPING // TERMINAL — Cotizador</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Playfair+Display:wght@600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
 :root{
   /* === NEGRO + ORO — lujo === */
@@ -29,8 +29,8 @@ body{
     radial-gradient(900px 600px at 95% -4%, rgba(230,200,120,.09), transparent 58%),
     radial-gradient(760px 640px at 80% 112%, rgba(184,134,11,.12), transparent 60%),
     var(--bg);
-  color:var(--text); font-family:'Space Grotesk',system-ui,sans-serif; font-size:15px;
-  min-height:100vh;
+  color:var(--text); font-family:'Inter',system-ui,-apple-system,sans-serif; font-size:15px;
+  min-height:100vh;-webkit-font-smoothing:antialiased;
 }
 a{color:var(--cyan);text-decoration:none}
 button{font-family:inherit}
@@ -186,6 +186,36 @@ main{max-width:1180px;margin:0 auto;padding:26px 22px 80px}
 .pend-item .pm{margin-left:auto;font-family:'Orbitron',sans-serif;color:var(--cyan2);font-size:13px}
 .continue-btn{display:inline-flex;align-items:center;gap:8px}
 @media(max-width:760px){ .dash-mid{grid-template-columns:1fr} .quick-actions{grid-template-columns:repeat(2,1fr)} .hero .clock{margin-left:0} .hero h1{font-size:23px} .hero .clock .t{font-size:24px} }
+
+/* ---------- Dashboard BENTO + gráfica ---------- */
+.bento{display:grid;gap:14px;grid-template-columns:1fr}
+.b-hero,.b-chart,.b-recent,.b-pending{min-width:0}
+@media(min-width:1000px){
+  .bento{grid-template-columns:1.35fr 1.35fr 1fr;align-items:stretch;
+    grid-template-areas:"hero hero chart" "kpis kpis chart" "recent recent pending";}
+  .b-hero{grid-area:hero}.b-chart{grid-area:chart}.b-kpis{grid-area:kpis}.b-recent{grid-area:recent}.b-pending{grid-area:pending}
+}
+.b-kpis .stats{height:100%;grid-template-columns:repeat(auto-fit,minmax(130px,1fr))}
+.ttl{margin:0;font-size:13.5px;font-weight:700;letter-spacing:.01em;color:var(--text)}
+.ph{display:flex;align-items:center;margin-bottom:12px;gap:10px}
+.ph .btn{margin-left:auto}
+.quick-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:16px}
+.qa2{padding:11px 8px;border-radius:11px;cursor:pointer;background:var(--panel2);border:1px solid var(--border);color:var(--text);font-weight:600;font-size:13px;font-family:inherit;transition:.15s}
+.qa2:hover{border-color:var(--border2);color:#fff;transform:translateY(-2px)}
+@media(max-width:560px){.quick-row{grid-template-columns:repeat(2,1fr)}}
+/* Donut */
+#donut{display:flex;flex-direction:column;align-items:center;gap:14px;padding-top:4px}
+.donut-svg{max-width:170px}
+.donut-svg circle{transition:stroke-dasharray .9s cubic-bezier(.2,.8,.2,1)}
+.d-total{fill:var(--text);font-size:30px;font-weight:800}
+.d-sub{fill:var(--muted);font-size:9px;letter-spacing:.18em;text-transform:uppercase}
+.legend{width:100%;display:grid;gap:4px}
+.lg-row{display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;padding:6px 8px;border-radius:9px;transition:.12s}
+.lg-row:hover{background:var(--panel2)}
+.lg-row .dot{width:11px;height:11px;border-radius:3px;flex:none}
+.lg-lbl{color:var(--muted)}
+.lg-n{margin-left:auto;font-weight:700;font-variant-numeric:tabular-nums}
+.lg-mo{color:var(--muted2);min-width:66px;text-align:right;font-variant-numeric:tabular-nums}
 
 /* ---------- Buttons ---------- */
 .btn{
@@ -422,11 +452,14 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
   .stat .v{font-size:20px}
 }
 
-/* ---------- NEGRO + ORO: tipografía de lujo y detalles ---------- */
-.brand .wm b,.hero h1,.page-head h1,.brand-sub b{font-family:'Playfair Display',Georgia,serif;letter-spacing:.02em}
-.brand .wm b{font-weight:800}
-.hero h1{font-weight:800;font-size:30px}
-.kpi .v,.hero .clock .t,.totals .row.grand b,.plan-total{font-family:'Playfair Display',Georgia,serif}
+/* ---------- Tipografía profesional (Inter en toda la app) ---------- */
+.mono,.brand .wm b,.brand .wm span,.brand-sub b,.hero h1,.page-head h1,.kpi .v,
+.hero .clock .t,.totals .row.grand b,.plan-total,.plan-total,.ttl{font-family:'Inter',system-ui,sans-serif !important}
+.brand .wm b{font-weight:800;letter-spacing:.08em;font-size:17px}
+.brand .wm span{letter-spacing:.3em;font-weight:600}
+.hero h1{font-weight:800;font-size:27px;letter-spacing:-.01em}
+.page-head h1{font-weight:800;letter-spacing:-.01em}
+.kpi .v,.hero .clock .t{font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
 .btn.primary,.btn.green{color:#1a1403}
 .badge.aprobada{color:var(--cyan2)}
 </style>
@@ -463,45 +496,49 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
 <main>
   <!-- DASHBOARD -->
   <section class="view active" id="view-dash">
-    <div class="hero reveal">
-      <div class="hero-inner">
-        <div id="dashHello" style="flex:1 1 auto;min-width:200px"></div>
-        <div class="clock">
-          <div class="t" id="dashClock">--:--:--</div>
-          <div class="d" id="dashDate"></div>
-        </div>
-      </div>
-      <div class="swatches" id="swatches"></div>
-    </div>
-    <div class="cmdbar reveal" style="animation-delay:.05s">
+    <div class="cmdbar reveal" style="margin-bottom:14px">
       <span class="cmd-ic">⌕</span>
       <input id="globalSearch" placeholder="Buscar cliente, cotización o producto…" autocomplete="off"
              oninput="globalSearch(this.value)" onfocus="globalSearch(this.value)"
              onblur="setTimeout(()=>{const b=document.getElementById('globalResults'); if(b)b.classList.remove('show')},180)">
       <div id="globalResults" class="prod-results"></div>
     </div>
-    <div class="quick-actions reveal" style="animation-delay:.1s">
-      <button class="qa" onclick="newQuote()"><span class="qi">🧾</span><span>Nueva cotización</span></button>
-      <button class="qa" onclick="newPlan()"><span class="qi">📐</span><span>Nuevo plano</span></button>
-      <button class="qa" onclick="editClient()"><span class="qi">👤</span><span>Nuevo cliente</span></button>
-      <button class="qa" onclick="go('catalog')"><span class="qi">🔎</span><span>Catálogo</span></button>
-    </div>
-    <div class="grid stats reveal" id="statCards" style="animation-delay:.15s"></div>
-    <div class="dash-mid reveal" style="animation-delay:.2s">
-      <div class="panel">
-        <h3 class="mono" style="margin:0 0 14px;font-size:15px">Cotizaciones por estado</h3>
-        <div id="statusChart"></div>
+    <div class="bento">
+      <div class="hero b-hero reveal">
+        <div class="hero-inner">
+          <div id="dashHello" style="flex:1 1 auto;min-width:160px"></div>
+          <div class="clock">
+            <div class="t" id="dashClock">--:--:--</div>
+            <div class="d" id="dashDate"></div>
+          </div>
+        </div>
+        <div class="quick-row">
+          <button class="qa2" onclick="newQuote()">🧾 Cotización</button>
+          <button class="qa2" onclick="newPlan()">📐 Plano</button>
+          <button class="qa2" onclick="editClient()">👤 Cliente</button>
+          <button class="qa2" onclick="go('catalog')">🔎 Catálogo</button>
+        </div>
       </div>
-      <div class="panel">
-        <div style="display:flex;align-items:center;margin-bottom:12px"><h3 class="mono" style="margin:0;font-size:15px">📨 Por dar seguimiento</h3>
-          <span class="hint" style="margin:0 0 0 10px">enviadas sin respuesta</span></div>
+
+      <div class="panel b-chart reveal" style="animation-delay:.05s">
+        <h3 class="ttl" style="margin:0 0 6px">Cotizaciones por estado</h3>
+        <div id="donut"></div>
+      </div>
+
+      <div class="b-kpis reveal" style="animation-delay:.1s">
+        <div class="grid stats" id="statCards"></div>
+      </div>
+
+      <div class="panel b-recent reveal" style="animation-delay:.15s">
+        <div class="ph"><h3 class="ttl">Últimas cotizaciones</h3>
+          <button class="btn sm ghost" onclick="go('quotes')">Ver todas →</button></div>
+        <div id="recentQuotes"></div>
+      </div>
+
+      <div class="panel b-pending reveal" style="animation-delay:.2s">
+        <div class="ph"><h3 class="ttl">📨 Por dar seguimiento</h3></div>
         <div id="pendingList"></div>
       </div>
-    </div>
-    <div class="panel reveal" style="margin-top:16px;animation-delay:.25s">
-      <div style="display:flex;align-items:center;margin-bottom:14px"><h3 class="mono" style="margin:0;font-size:15px">Últimas cotizaciones</h3>
-        <button class="btn sm ghost" style="margin-left:auto" onclick="go('quotes')">Ver todas →</button></div>
-      <div id="recentQuotes"></div>
     </div>
   </section>
 
@@ -801,7 +838,6 @@ document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>go(b.dataset.
 // Load
 // ============================================================
 async function boot(){
-  applyAccent();
   try{
     const [settings,clients,catalog,quotes] = await Promise.all([
       api.get('/api/settings'), api.get('/api/clients'), api.get('/api/catalog'), api.get('/api/quotes')
@@ -860,15 +896,9 @@ async function renderDash(){
   const KPI_COLORS=['#d4af37','#e6c878','#f3e3a6','#cd7f32','#e8b4a0'];
   $('statCards').innerHTML = _dashCards.map((c,i)=>`<div class="kpi" style="--kc:${KPI_COLORS[i%KPI_COLORS.length]}" onclick="_dashCards[${i}].go()"><div class="k"><span class="ic">${c.ic}</span>${c.k}</div><div class="v ${c.sm?'sm':''}" style="color:${KPI_COLORS[i%KPI_COLORS.length]}" data-to="${c.n}" data-money="${c.money?1:0}">${c.money?money(0):'0'}</div></div>`).join('');
   animateCounts($('statCards'));
-  renderSwatches();
 
-  // 2) Gráfica por estado (barras animadas, clicables)
-  const order=[['borrador','Borrador','var(--muted)'],['enviada','Enviada','var(--cyan)'],['aprobada','Aprobada','var(--green)'],['rechazada','Rechazada','var(--danger)']];
-  const maxN=Math.max(1,...order.map(([k])=>byStatus[k]?.n||0));
-  $('statusChart').innerHTML = order.map(([k,lbl,col])=>{ const n=byStatus[k]?.n||0, mo=byStatus[k]?.monto||0, w=n?Math.max(Math.round((n/maxN)*100),6):0;
-    return `<div class="sbar" onclick="filterQuotes('${k}')"><div class="st"><span>${lbl}</span><span class="cnt">${n} · ${money(mo)}</span></div>
-      <div class="track"><span data-w="${w}" style="width:0;background:${col}"></span></div></div>`; }).join('');
-  requestAnimationFrame(()=>document.querySelectorAll('#statusChart .track span[data-w]').forEach(s=>{ s.style.width=s.dataset.w+'%'; }));
+  // 2) Gráfica DONUT por estado
+  renderDonut(byStatus);
 
   // 5) Pendientes de seguimiento (enviadas)
   const pend=S.quotes.filter(q=>q.status==='enviada').slice(0,6);
@@ -883,6 +913,24 @@ async function renderDash(){
   $('recentQuotes').innerHTML = recent.length ? quoteTable(recent) : emptyBox('Aún no hay cotizaciones','Crea la primera con “Nueva cotización”.');
 }
 function filterQuotes(status){ const el=$('quoteSearch'); if(el) el.value=status; go('quotes'); }
+function renderDonut(byStatus){
+  const el=$('donut'); if(!el) return;
+  const data=[['aprobada','Aprobada','#3fb787'],['enviada','Enviada','#d4af37'],['borrador','Borrador','#8a7f63'],['rechazada','Rechazada','#c06b7a']];
+  const segs=data.map(([k,lbl,c])=>({k,lbl,c,n:byStatus[k]?.n||0,mo:byStatus[k]?.monto||0}));
+  const total=segs.reduce((s,x)=>s+x.n,0);
+  const r=58, C=2*Math.PI*r; let acc=0;
+  const arcs = total ? segs.filter(s=>s.n>0).map(s=>{ const len=s.n/total*C;
+      const a=`<circle r="${r}" cx="80" cy="80" fill="none" stroke="${s.c}" stroke-width="17" stroke-dasharray="${len.toFixed(2)} ${(C-len).toFixed(2)}" stroke-dashoffset="${(-acc).toFixed(2)}" transform="rotate(-90 80 80)"/>`;
+      acc+=len; return a; }).join('')
+    : `<circle r="${r}" cx="80" cy="80" fill="none" stroke="rgba(212,175,55,.14)" stroke-width="17"/>`;
+  const legend=segs.map(s=>`<div class="lg-row" ${s.n?`onclick="filterQuotes('${s.k}')"`:'style="cursor:default"'}>
+      <span class="dot" style="background:${s.c}"></span><span class="lg-lbl">${s.lbl}</span>
+      <span class="lg-n">${s.n}</span><span class="lg-mo">${money(s.mo)}</span></div>`).join('');
+  el.innerHTML=`<svg viewBox="0 0 160 160" width="170" height="170" class="donut-svg">${arcs}
+      <text x="80" y="76" text-anchor="middle" class="d-total">${total}</text>
+      <text x="80" y="95" text-anchor="middle" class="d-sub">cotizaciones</text></svg>
+    <div class="legend">${legend}</div>`;
+}
 function animateCounts(scope){ (scope||document).querySelectorAll('.v[data-to]').forEach(el=>{
   const to=parseFloat(el.dataset.to)||0, isMoney=el.dataset.money==='1', dur=850, t0=performance.now();
   (function step(t){ const p=Math.min(1,(t-t0)/dur), e=1-Math.pow(1-p,3), val=to*e;
