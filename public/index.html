@@ -715,6 +715,7 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
       <button class="btn ghost sm" onclick="go('plans')">← Volver</button>
       <h1>Editor de plano</h1>
       <div class="spacer"></div>
+      <button class="btn sm" onclick="show3D()">🧊 Ver en 3D</button>
       <button class="btn sm" onclick="printPlan()">🖨 Imprimir</button>
       <button class="btn" onclick="planToQuote()">➕ Cotizar áreas</button>
       <button class="btn green" onclick="savePlan()">Guardar</button>
@@ -739,6 +740,7 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
           <button class="tool ghost" id="tool-door" onclick="setMode('door')">🚪 Puerta</button>
           <button class="tool ghost" id="tool-window" onclick="setMode('window')">🪟 Ventana</button>
           <button class="tool ghost" id="tool-repair" onclick="setMode('repair')">🔧 Reparación</button>
+          <button class="tool ghost" id="tool-furniture" onclick="setMode('furniture')">🛋️ Muebles</button>
           <span class="sep"></span>
           <button class="tool ghost" id="tool-calibrate" onclick="setMode('calibrate')">📐 Calibrar</button>
           <label class="tool ghost" style="cursor:pointer">🖼️ Subir plano<input type="file" id="pl_bg" accept="image/*" style="display:none" onchange="loadBg(event)"></label>
@@ -747,7 +749,7 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
           <button class="tool ghost" onclick="undoPoint()">↶ Deshacer</button>
           <span class="sep"></span>
           <label class="switch" style="margin:0"><input type="checkbox" id="pl_snap" checked> 🧲 Rejilla</label>
-          <label class="switch" style="margin:0"><input type="checkbox" id="pl_ortho" checked> ⊾ 90°</label>
+          <label class="switch" style="margin:0"><input type="checkbox" id="pl_ortho" checked> ⊾ 90/45°</label>
         </div>
         <div class="plan-hint" id="planModeHint"></div>
         <div class="plan-stage">
@@ -773,6 +775,11 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
           <span>🔧 Tipo:</span>
           <span id="repairKinds"></span>
           <span style="color:var(--muted2)">Haz clic en el plano para marcar el daño.</span>
+        </div>
+        <div class="bgbar" id="furnitureBar">
+          <span>🛋️ Mueble:</span>
+          <span id="furnKinds"></span>
+          <span style="color:var(--muted2)">Clic en el plano. Suma costo de protección (plásticos/cinta).</span>
         </div>
       </div>
       <div class="plan-side">
@@ -886,6 +893,15 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
     <img id="lightboxImg" alt="">
     <div class="lb-cap" id="lightboxCap"></div>
     <button class="btn green" id="lightboxAdd" style="margin-top:12px">➕ Agregar a cotización</button>
+  </div>
+</div>
+
+<!-- Vista 3D isométrica -->
+<div class="lightbox" id="view3d" onclick="close3D()">
+  <div class="lb-inner" onclick="event.stopPropagation()" style="max-width:900px">
+    <button class="lb-close" onclick="close3D()">✕</button>
+    <div id="view3dBox"></div>
+    <div class="lb-cap">Vista 3D (isométrica) · muestra los colores asignados a cada sala</div>
   </div>
 </div>
 
@@ -1671,7 +1687,7 @@ function planCalcDefaults(){ const s=S.settings||{}; return {
   pgal:Number(s.precio_galon||25), rend:Number(s.default_yield||35), manos:Number(s.default_coats||2),
   waste:Number(s.desperdicio||12), umbral:Number(s.umbral_vano||1.5),
   tbase:Number(s.tarifa_base_m2||12), trec:Number(s.tarifa_recorte_ml||4.5) }; }
-function blankPlan(){ return { id:null,name:'',client_id:'',scale:50,rooms:[],bg:null,calc:planCalcDefaults(),repairs:[],repairKind:'grieta',
+function blankPlan(){ return { id:null,name:'',client_id:'',scale:50,rooms:[],bg:null,calc:planCalcDefaults(),repairs:[],repairKind:'grieta',furniture:[],furnKind:'sofa',
   mode:'free',current:[],sel:null,drag:null,pan:null,calib:[],hover:null,create:null,vb:{x:0,y:0,w:1200,h:1200/ASPECT} }; }
 function newPlan(){ P=blankPlan(); mountPlanEditor(); go('planeditor'); }
 async function openPlan(id){
@@ -1682,6 +1698,7 @@ async function openPlan(id){
     P.bg=(p.data&&p.data.bg)?p.data.bg:null;
     P.calc=(p.data&&p.data.calc)?Object.assign(planCalcDefaults(),p.data.calc):planCalcDefaults();
     P.repairs=(p.data&&Array.isArray(p.data.repairs))?p.data.repairs:[];
+    P.furniture=(p.data&&Array.isArray(p.data.furniture))?p.data.furniture:[];
     mountPlanEditor(); go('planeditor');
   }catch(e){ toast(e.message,true); }
 }
@@ -1711,13 +1728,15 @@ const MODE_HINTS={
   repair:'🔧 <b>Reparación</b>: elige el tipo y haz clic en el plano donde está el daño (humedad, grieta, hueco). Se suma al presupuesto.',
   rect:'▭ <b>Rectángulo</b>: <b>arrastra</b> sobre el plano para dibujar la sala. Luego ajusta las medidas (doble clic en una pared o edita en el panel).',
   circle:'⬭ <b>Círculo</b>: <b>arrastra desde el centro</b> hacia afuera para dibujar. Luego pon el diámetro exacto en el panel de la sala.',
-  free:'✏️ <b>Libre</b>: mantén presionado y <b>mueve</b> para dibujar cualquier forma; al soltar se convierte en sala. Luego ajusta las medidas en Editar.'
+  free:'✏️ <b>Libre</b>: mantén presionado y <b>mueve</b> para dibujar cualquier forma; al soltar se convierte en sala. Luego ajusta las medidas en Editar.',
+  furniture:'🛋️ <b>Muebles</b>: elige el tipo y haz clic donde está el mueble. No se pinta, pero suma costo de protección (plásticos/cinta).'
 };
 function setMode(m){
   P.mode=m; if(m!=='draw') P.current=[]; if(m!=='calibrate') P.calib=[]; P.create=null;
-  ['free','rect','circle','draw','select','pan','door','window','repair','calibrate'].forEach(t=>{ const b=$('tool-'+t); if(b) b.className='tool'+(t===m?' on':' ghost'); });
+  ['free','rect','circle','draw','select','pan','door','window','repair','furniture','calibrate'].forEach(t=>{ const b=$('tool-'+t); if(b) b.className='tool'+(t===m?' on':' ghost'); });
   const svg=$('planSvg'); svg.classList.remove('mode-select','mode-pan'); if(m==='select')svg.classList.add('mode-select'); if(m==='pan')svg.classList.add('mode-pan');
   const rb=$('repairBar'); if(rb){ rb.classList.toggle('show',m==='repair'); if(m==='repair') renderRepairKinds(); }
+  const fb=$('furnitureBar'); if(fb){ fb.classList.toggle('show',m==='furniture'); if(m==='furniture') renderFurnKinds(); }
   $('planModeHint').innerHTML=MODE_HINTS[m]||''; draw();
 }
 function renderRepairKinds(){ const el=$('repairKinds'); if(!el) return; const cur=P.repairKind||'grieta';
@@ -1728,6 +1747,13 @@ function addRepair(evt){ const p=rawPt(evt); const kind=P.repairKind||'grieta'; 
   draw(); toast(t.icon+' '+t.lbl+' marcada'); }
 function delRepair(i){ P.repairs.splice(i,1); draw(); }
 function setRepairCost(i,v){ P.repairs[i].cost=Math.max(0,Number(v)||0); renderCalcResult(); drawSvg(); }
+function renderFurnKinds(){ const el=$('furnKinds'); if(!el) return; const cur=P.furnKind||'sofa';
+  el.innerHTML=Object.entries(FURNITURE_TYPES).map(([k,t])=>`<button class="btn sm ${k===cur?'':'ghost'}" style="margin-right:4px" onclick="setFurnKind('${k}')">${t.icon} ${t.lbl}</button>`).join(''); }
+function setFurnKind(k){ P.furnKind=k; renderFurnKinds(); }
+function addFurniture(evt){ const p=rawPt(evt); const kind=P.furnKind||'sofa'; const t=FURNITURE_TYPES[kind]||FURNITURE_TYPES.otro;
+  P.furniture=P.furniture||[]; P.furniture.push({ id:'f'+Math.random().toString(36).slice(2,7), x:p.x, y:p.y, kind, cost:t.cost }); draw(); toast(t.icon+' '+t.lbl+' agregado'); }
+function delFurniture(i){ P.furniture.splice(i,1); draw(); }
+function setFurnitureCost(i,v){ P.furniture[i].cost=Math.max(0,Number(v)||0); renderCalcResult(); drawSvg(); }
 
 /* ---- geometría / utilidades ---- */
 function dist(a,b){ return Math.hypot(a.x-b.x,a.y-b.y); }
@@ -1736,7 +1762,10 @@ function hexA(hex,a){ const n=String(hex).replace('#',''); const r=parseInt(n.sl
 function pxWorld(){ const svg=$('planSvg'); return P.vb.w/((svg&&svg.clientWidth)||1000); }
 function rawPt(evt){ const svg=$('planSvg'); const pt=svg.createSVGPoint(); pt.x=evt.clientX; pt.y=evt.clientY; const l=pt.matrixTransform(svg.getScreenCTM().inverse()); return {x:l.x,y:l.y}; }
 function snapTo(p){ if(!$('pl_snap')?.checked) return {x:p.x,y:p.y}; const s=P.scale/10; return {x:Math.round(p.x/s)*s,y:Math.round(p.y/s)*s}; }
-function ortho(from,p){ if(!$('pl_ortho')?.checked||!from) return p; return (Math.abs(p.x-from.x)>=Math.abs(p.y-from.y))?{x:p.x,y:from.y}:{x:from.x,y:p.y}; }
+function ortho(from,p){ if(!$('pl_ortho')?.checked||!from) return p;
+  const dx=p.x-from.x, dy=p.y-from.y, len=Math.hypot(dx,dy); if(len<1e-6) return p;
+  const snap=Math.round(Math.atan2(dy,dx)/(Math.PI/4))*(Math.PI/4);
+  return {x:from.x+Math.cos(snap)*len, y:from.y+Math.sin(snap)*len}; }
 function projSeg(p,a,b){ const vx=b.x-a.x,vy=b.y-a.y; const L=vx*vx+vy*vy||1; let t=clamp(((p.x-a.x)*vx+(p.y-a.y)*vy)/L,0,1); return {t,pt:{x:a.x+vx*t,y:a.y+vy*t}}; }
 function shoelacePx(p){ let a=0; for(let i=0;i<p.length;i++){ const j=(i+1)%p.length; a+=p[i].x*p[j].y-p[j].x*p[i].y; } return Math.abs(a)/2; }
 function floorArea(r){ return shoelacePx(r.points)/(P.scale*P.scale); }
@@ -1756,6 +1785,11 @@ const REPAIR_TYPES={
   otro:{lbl:'Otro', icon:'🔧', color:'#8ce05a', cost:10}
 };
 function repairsTotal(){ return (P.repairs||[]).reduce((s,r)=>s+(+r.cost||0),0); }
+const FURNITURE_TYPES={
+  sofa:{lbl:'Sofá', icon:'🛋️', cost:8}, cama:{lbl:'Cama', icon:'🛏️', cost:10},
+  mesa:{lbl:'Mesa/sillas', icon:'🍽️', cost:5}, mueble:{lbl:'Closet/mueble', icon:'🗄️', cost:12}, otro:{lbl:'Objeto', icon:'📦', cost:6}
+};
+function furnitureTotal(){ return (P.furniture||[]).reduce((s,f)=>s+(+f.cost||0),0); }
 function pc(){ const c=P.calc||planCalcDefaults(); return c; }
 function roomFc(r){ const est=ESTADO_FC[r.estado||'lisa']||1; const alt=(+r.height||2.7)>=3?1.35:1; return est*alt; }
 function computeRoom(r){
@@ -1778,7 +1812,8 @@ function computeProject(){
   t.materiales=t.galonesUp*c.pgal;
   t.manoObra=t.mano;
   t.reparaciones=repairsTotal();
-  t.presupuesto=t.materiales+t.manoObra+t.reparaciones; // costo (antes de ganancia)
+  t.proteccion=furnitureTotal();
+  t.presupuesto=t.materiales+t.manoObra+t.reparaciones+t.proteccion; // costo (antes de ganancia)
   return { c, rows, t };
 }
 function setCalc(k,v){ if(!P.calc) P.calc=planCalcDefaults(); P.calc[k]=Number(v)||0; renderCalcResult(); }
@@ -1803,6 +1838,7 @@ function renderCalcResult(){
       <div class="cc"><span>Materiales</span><b>${money(t.materiales)}</b></div>
       <div class="cc"><span>Mano de obra</span><b>${money(t.manoObra)}</b></div>
       ${t.reparaciones>0?`<div class="cc"><span>Reparaciones (${P.repairs.length})</span><b>${money(t.reparaciones)}</b></div>`:''}
+      ${t.proteccion>0?`<div class="cc"><span>Protección muebles (${P.furniture.length})</span><b>${money(t.proteccion)}</b></div>`:''}
       <div class="cc total"><span>Presupuesto (costo)</span><b>${money(t.presupuesto)}</b></div>
     </div>`;
 }
@@ -1819,6 +1855,7 @@ function renderLiveCounters(){
     <div class="lc hi"><span>Presupuesto</span><b>${money(t.presupuesto)}</b></div>`;
 }
 function setRoomEstado(ri,v){ P.rooms[ri].estado=v; renderCalcResult(); drawSvg(); }
+function setRoomPaint(ri,v){ P.rooms[ri].paintColor=v||null; draw(); }
 function projectToQuote(){
   if(!P.rooms.length){ toast('Dibuja al menos una sala',true); return; }
   const {c,rows,t}=computeProject();
@@ -1830,9 +1867,35 @@ function projectToQuote(){
   if(t.reparaciones>0){ const byKind={}; (P.repairs||[]).forEach(d=>{ byKind[d.kind]=(byKind[d.kind]||0)+(+d.cost||0); });
     const detalle=Object.entries(byKind).map(([k,v])=>`${(REPAIR_TYPES[k]||REPAIR_TYPES.otro).lbl}`).join(', ');
     items.push({ id:null, category:'otro', cost_type:'materiales', description:`Reparaciones (${P.repairs.length}): ${detalle}`, unit:'global', is_area:0, width:0,height:0,qcount:1,deduction:0, qty:1, unit_price:Math.round(t.reparaciones*100)/100, coats:c.manos, paint_yield:c.rend }); }
+  if(t.proteccion>0){ items.push({ id:null, category:'otro', cost_type:'mano-obra', description:`Protección y tapado de muebles (${P.furniture.length})`, unit:'global', is_area:0, width:0,height:0,qcount:1,deduction:0, qty:1, unit_price:Math.round(t.proteccion*100)/100, coats:c.manos, paint_yield:c.rend }); }
   q.items=items.length?items:[blankItem()];
   S.editing=q; fillEditor(); go('editor'); toast('Presupuesto cargado en una cotización ✓');
 }
+// ---- Vista 3D isométrica ----
+function iso3(x,y,z){ return { X:(x-y)*0.866, Y:(x+y)*0.5 - z }; }
+function shadeHex(hex,f){ const n=String(hex||'#cccccc').replace('#',''); let r=parseInt(n.slice(0,2),16),g=parseInt(n.slice(2,4),16),b=parseInt(n.slice(4,6),16);
+  r=Math.min(255,Math.round(r*f));g=Math.min(255,Math.round(g*f));b=Math.min(255,Math.round(b*f)); return `rgb(${r},${g},${b})`; }
+function show3D(){
+  if(!P.rooms.length){ toast('Dibuja al menos una sala',true); return; }
+  const faces=[];
+  P.rooms.forEach(room=>{ const h=(room.height||2.7)*P.scale; const base=room.paintColor||'#d8cdb5';
+    const fl=room.points.map(p=>iso3(p.x,p.y,0));
+    faces.push({ pts:fl, fill:'#8c8c90', stroke:'#555', depth:-1e12 });
+    for(let i=0;i<room.points.length;i++){ const a=room.points[i], b=room.points[(i+1)%room.points.length];
+      const a0=iso3(a.x,a.y,0), b0=iso3(b.x,b.y,0), b1=iso3(b.x,b.y,h), a1=iso3(a.x,a.y,h);
+      const horiz=Math.abs(b.x-a.x)>=Math.abs(b.y-a.y);
+      faces.push({ pts:[a0,b0,b1,a1], fill:shadeHex(base, horiz?0.85:0.6), stroke:'rgba(0,0,0,.28)', depth:(a.x+b.x+a.y+b.y)/2 });
+    }
+  });
+  faces.sort((p,q)=>p.depth-q.depth);
+  let xs=[],ys=[]; faces.forEach(f=>f.pts.forEach(p=>{xs.push(p.X);ys.push(p.Y);}));
+  const minx=Math.min(...xs),maxx=Math.max(...xs),miny=Math.min(...ys),maxy=Math.max(...ys), pad=30;
+  const vbw=(maxx-minx+pad*2), vbh=(maxy-miny+pad*2);
+  const body=faces.map(f=>`<polygon points="${f.pts.map(p=>`${(p.X-minx+pad).toFixed(1)},${(p.Y-miny+pad).toFixed(1)}`).join(' ')}" fill="${f.fill}" stroke="${f.stroke}" stroke-width="1" stroke-linejoin="round"/>`).join('');
+  $('view3dBox').innerHTML=`<svg viewBox="0 0 ${vbw.toFixed(0)} ${vbh.toFixed(0)}" style="width:100%;height:auto;max-height:70vh;background:#0b0b0d;border-radius:12px;border:1px solid var(--border2)">${body}</svg>`;
+  $('view3d').classList.add('show');
+}
+function close3D(){ $('view3d').classList.remove('show'); }
 
 /* ---- interacción puntero ---- */
 function bindDrag(){ window.addEventListener('pointermove',planDrag); window.addEventListener('pointerup',planUp); }
@@ -1917,6 +1980,7 @@ function handleClick(evt){
   else if(P.mode==='door') addOpening(evt,'door');
   else if(P.mode==='window') addOpening(evt,'window');
   else if(P.mode==='repair') addRepair(evt);
+  else if(P.mode==='furniture') addFurniture(evt);
   else if(P.mode==='calibrate') addCalibPoint(evt);
   else if(P.mode==='select'){ P.sel=null; draw(); }
 }
@@ -2051,6 +2115,9 @@ function drawSvg(){
   (P.repairs||[]).forEach(d=>{ const t=REPAIR_TYPES[d.kind]||REPAIR_TYPES.otro;
     out+=`<circle cx="${d.x}" cy="${d.y}" r="${9*k}" fill="${t.color}" stroke="#fff" stroke-width="${1.5*k}" opacity=".92"/>`+
          `<text x="${d.x}" y="${d.y+4*k}" text-anchor="middle" style="font-size:${10*k}px">${t.icon}</text>`; });
+  (P.furniture||[]).forEach(f=>{ const t=FURNITURE_TYPES[f.kind]||FURNITURE_TYPES.otro;
+    out+=`<rect x="${f.x-11*k}" y="${f.y-11*k}" width="${22*k}" height="${22*k}" rx="${5*k}" fill="rgba(20,20,22,.7)" stroke="#fff" stroke-width="${1.2*k}"/>`+
+         `<text x="${f.x}" y="${f.y+5*k}" text-anchor="middle" style="font-size:${12*k}px">${t.icon}</text>`; });
   $('planSvg').innerHTML=out;
 }
 function buildGrid(vb,s,k){ const mv=vb.w/s; const step=mv>80?5:1, sp=step*s; let out='';
@@ -2059,8 +2126,9 @@ function buildGrid(vb,s,k){ const mv=vb.w/s; const step=mv>80?5:1, sp=step*s; le
   for(let y=y0;y<=y1;y+=sp){ const mj=Math.round(y/sp)%5===0; out+=`<line class="grid-line ${mj?'major':''}" x1="${vb.x}" y1="${y}" x2="${x1}" y2="${y}" style="stroke-width:${(mj?1.2:0.7)*k}"/>`; }
   return out;
 }
+function roomFill(r){ return r.paintColor?hexA(r.paintColor,.6):hexA(r.color,.15); }
 function drawCircleRoom(r,ri,s,k){ const sel=P.sel===ri; let out='';
-  out+=`<circle class="room-poly ${sel?'sel':''}" data-ri="${ri}" cx="${r.cx}" cy="${r.cy}" r="${r.r}" style="stroke:${r.color};fill:${hexA(r.color,.15)};stroke-width:${2.4*k}"/>`;
+  out+=`<circle class="room-poly ${sel?'sel':''}" data-ri="${ri}" cx="${r.cx}" cy="${r.cy}" r="${r.r}" style="stroke:${r.color};fill:${roomFill(r)};stroke-width:${2.4*k}"/>`;
   out+=`<circle class="edge-hit" data-ri="${ri}" data-ei="0" cx="${r.cx}" cy="${r.cy}" r="${r.r}" fill="none" style="stroke-width:${16*k}"/>`;
   (r.openings||[]).forEach(o=>{ out+=drawOpening(r,o,k); });
   out+=`<text class="edge-len" x="${r.cx}" y="${r.cy-7*k}" text-anchor="middle" style="font-size:${12*k}px;stroke-width:${3*k}px">Ø ${(2*r.r/s).toFixed(2)} m</text>`;
@@ -2071,7 +2139,7 @@ function drawCircleRoom(r,ri,s,k){ const sel=P.sel===ri; let out='';
 }
 function drawRoom(r,ri,s,k){ if(r.shape==='circle') return drawCircleRoom(r,ri,s,k);
   const pts=r.points.map(p=>`${p.x},${p.y}`).join(' '); const sel=P.sel===ri; let out='';
-  out+=`<polygon class="room-poly ${sel?'sel':''}" data-ri="${ri}" points="${pts}" style="stroke:${r.color};fill:${hexA(r.color,.15)};stroke-width:${2.4*k}"/>`;
+  out+=`<polygon class="room-poly ${sel?'sel':''}" data-ri="${ri}" points="${pts}" style="stroke:${r.color};fill:${roomFill(r)};stroke-width:${2.4*k}"/>`;
   for(let i=0;i<r.points.length;i++){ const a=r.points[i], b=r.points[(i+1)%r.points.length];
     out+=`<line class="edge-hit" data-ri="${ri}" data-ei="${i}" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" style="stroke-width:${16*k}"/>`;
     const mx=(a.x+b.x)/2, my=(a.y+b.y)/2; let nx=-(b.y-a.y), ny=(b.x-a.x); const nl=Math.hypot(nx,ny)||1; nx/=nl; ny/=nl;
@@ -2110,8 +2178,17 @@ function repairsPanelHtml(){
       <button class="btn sm danger icon" onclick="delRepair(${i})">✕</button></div>`; }).join('')}
   </div>`;
 }
+function furniturePanelHtml(){
+  if(!(P.furniture||[]).length) return '';
+  return `<div style="margin-top:12px;border-top:1px solid var(--border);padding-top:10px">
+    <b class="mono" style="font-size:12px">🛋️ MUEBLES (protección)</b>
+    ${P.furniture.map((f,i)=>{ const t=FURNITURE_TYPES[f.kind]||FURNITURE_TYPES.otro; return `<div class="ops">${t.icon} ${t.lbl}
+      <input type="number" step="0.5" value="${f.cost}" oninput="setFurnitureCost(${i},this.value)" style="width:70px"> $
+      <button class="btn sm danger icon" onclick="delFurniture(${i})">✕</button></div>`; }).join('')}
+  </div>`;
+}
 function renderRoomsPanel(){
-  if(!P.rooms.length){ $('roomsPanel').innerHTML='<div style="color:var(--muted);font-size:13px">Dibuja una sala o usa ▭ Rectángulo.</div>'+repairsPanelHtml(); return; }
+  if(!P.rooms.length){ $('roomsPanel').innerHTML='<div style="color:var(--muted);font-size:13px">Dibuja una sala o usa ▭ Rectángulo.</div>'+repairsPanelHtml()+furniturePanelHtml(); return; }
   $('roomsPanel').innerHTML=P.rooms.map((r,ri)=>`
     <div class="room-card ${P.sel===ri?'sel':''}">
       <div class="hd"><span class="sw" style="background:${r.color}"></span>
@@ -2124,15 +2201,16 @@ function renderRoomsPanel(){
       <div class="ht">Altura <input type="number" step="0.05" value="${r.height||2.7}" oninput="setRoomHeight(${ri},this.value)"> m</div>
       ${r.shape==='circle'?`<div class="ht">⬭ Diámetro <input type="number" step="0.05" value="${(2*r.r/P.scale).toFixed(2)}" oninput="setRoomDiameter(${ri},this.value)"> m</div>`:''}
       <div class="ht">Estado <select onchange="setRoomEstado(${ri},this.value)" style="flex:1">${Object.keys(ESTADO_LBL).map(k=>`<option value="${k}" ${(r.estado||'lisa')===k?'selected':''}>${ESTADO_LBL[k]}</option>`).join('')}</select></div>
+      <div class="ht">🎨 Color <input type="color" value="${r.paintColor||'#cfc3a8'}" oninput="setRoomPaint(${ri},this.value)" style="width:42px;height:28px;padding:2px">${r.paintColor?`<button class="btn sm ghost" onclick="setRoomPaint(${ri},'')">quitar</button>`:''}</div>
       ${(r.openings||[]).map((o,oi)=>`<div class="ops">${o.kind==='door'?'🚪':'🪟'}
         <input type="number" step="0.05" value="${o.w}" oninput="setOpening(${ri},${oi},'w',this.value)">×<input type="number" step="0.05" value="${o.h}" oninput="setOpening(${ri},${oi},'h',this.value)"> m
         <button class="btn sm danger icon" onclick="delOpening(${ri},${oi})">✕</button></div>`).join('')}
-    </div>`).join('')+repairsPanelHtml();
+    </div>`).join('')+repairsPanelHtml()+furniturePanelHtml();
 }
 
 async function savePlan(){
   P.name=$('pl_name').value; P.client_id=$('pl_client').value; P.scale=Number($('pl_scale').value||50);
-  const body={ name:P.name, client_id:P.client_id, scale:P.scale, area_total:totalFloor(), data:{rooms:P.rooms,bg:P.bg,calc:P.calc,repairs:P.repairs} };
+  const body={ name:P.name, client_id:P.client_id, scale:P.scale, area_total:totalFloor(), data:{rooms:P.rooms,bg:P.bg,calc:P.calc,repairs:P.repairs,furniture:P.furniture} };
   if(JSON.stringify(body).length>4600000){ toast('La imagen de fondo es muy pesada; usa una más liviana',true); return; }
   try{ const saved=P.id?await api.send('PUT','/api/plans/'+P.id,body):await api.send('POST','/api/plans',body); P.id=saved.id; toast('Plano guardado ✓'); }
   catch(e){ toast(e.message,true); }
