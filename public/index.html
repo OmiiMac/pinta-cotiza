@@ -720,7 +720,9 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
     <div class="plan-wrap">
       <div class="plan-canvas-box">
         <div class="plan-toolbar">
-          <button class="tool on" id="tool-draw" onclick="setMode('draw')">✏️ Dibujar</button>
+          <button class="tool on" id="tool-rect" onclick="setMode('rect')">▭ Rectángulo</button>
+          <button class="tool ghost" id="tool-circle" onclick="setMode('circle')">⬭ Círculo</button>
+          <button class="tool ghost" id="tool-draw" onclick="setMode('draw')">✏️ A mano</button>
           <button class="tool ghost" id="tool-select" onclick="setMode('select')">✋ Editar</button>
           <button class="tool ghost" id="tool-pan" onclick="setMode('pan')">🖐 Vista</button>
           <span class="sep"></span>
@@ -731,7 +733,6 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
           <button class="tool ghost" id="tool-calibrate" onclick="setMode('calibrate')">📐 Calibrar</button>
           <label class="tool ghost" style="cursor:pointer">🖼️ Subir plano<input type="file" id="pl_bg" accept="image/*" style="display:none" onchange="loadBg(event)"></label>
           <span class="sep"></span>
-          <button class="tool ghost" onclick="rectRoom()">▭ Rectángulo</button>
           <button class="tool ghost" onclick="closeRoom()">✓ Cerrar</button>
           <button class="tool ghost" onclick="undoPoint()">↶ Deshacer</button>
           <span class="sep"></span>
@@ -1660,7 +1661,7 @@ function planCalcDefaults(){ const s=S.settings||{}; return {
   waste:Number(s.desperdicio||12), umbral:Number(s.umbral_vano||1.5),
   tbase:Number(s.tarifa_base_m2||12), trec:Number(s.tarifa_recorte_ml||4.5) }; }
 function blankPlan(){ return { id:null,name:'',client_id:'',scale:50,rooms:[],bg:null,calc:planCalcDefaults(),repairs:[],repairKind:'grieta',
-  mode:'draw',current:[],sel:null,drag:null,pan:null,calib:[],hover:null,vb:{x:0,y:0,w:1200,h:1200/ASPECT} }; }
+  mode:'rect',current:[],sel:null,drag:null,pan:null,calib:[],hover:null,create:null,vb:{x:0,y:0,w:1200,h:1200/ASPECT} }; }
 function newPlan(){ P=blankPlan(); mountPlanEditor(); go('planeditor'); }
 async function openPlan(id){
   try{ const p=await api.get('/api/plans/'+id); P=blankPlan();
@@ -1696,11 +1697,13 @@ const MODE_HINTS={
   door:'🚪 <b>Puerta</b>: clic sobre una pared para colocar una puerta (se resta del área a pintar).',
   window:'🪟 <b>Ventana</b>: clic sobre una pared para colocar una ventana (se resta del área a pintar).',
   calibrate:'📐 <b>Calibrar</b>: clic en dos puntos de una medida conocida y escribe cuántos metros son. Ideal tras subir un plano.',
-  repair:'🔧 <b>Reparación</b>: elige el tipo y haz clic en el plano donde está el daño (humedad, grieta, hueco). Se suma al presupuesto.'
+  repair:'🔧 <b>Reparación</b>: elige el tipo y haz clic en el plano donde está el daño (humedad, grieta, hueco). Se suma al presupuesto.',
+  rect:'▭ <b>Rectángulo</b>: <b>arrastra</b> sobre el plano para dibujar la sala. Luego ajusta las medidas (doble clic en una pared o edita en el panel).',
+  circle:'⬭ <b>Círculo</b>: <b>arrastra desde el centro</b> hacia afuera para dibujar. Luego pon el diámetro exacto en el panel de la sala.'
 };
 function setMode(m){
-  P.mode=m; if(m!=='draw') P.current=[]; if(m!=='calibrate') P.calib=[];
-  ['draw','select','pan','door','window','repair','calibrate'].forEach(t=>{ const b=$('tool-'+t); if(b) b.className='tool'+(t===m?' on':' ghost'); });
+  P.mode=m; if(m!=='draw') P.current=[]; if(m!=='calibrate') P.calib=[]; P.create=null;
+  ['rect','circle','draw','select','pan','door','window','repair','calibrate'].forEach(t=>{ const b=$('tool-'+t); if(b) b.className='tool'+(t===m?' on':' ghost'); });
   const svg=$('planSvg'); svg.classList.remove('mode-select','mode-pan'); if(m==='select')svg.classList.add('mode-select'); if(m==='pan')svg.classList.add('mode-pan');
   const rb=$('repairBar'); if(rb){ rb.classList.toggle('show',m==='repair'); if(m==='repair') renderRepairKinds(); }
   $('planModeHint').innerHTML=MODE_HINTS[m]||''; draw();
@@ -1812,6 +1815,7 @@ function bindDrag(){ window.addEventListener('pointermove',planDrag); window.add
 function unbindDrag(){ window.removeEventListener('pointermove',planDrag); window.removeEventListener('pointerup',planUp); }
 function planDown(evt){
   if(evt.button===1||P.mode==='pan'){ beginPan(evt); bindDrag(); return; }
+  if(P.mode==='rect'||P.mode==='circle'){ const p=snapTo(rawPt(evt)); P.create={kind:P.mode,start:p,cur:p}; bindDrag(); return; }
   const t=evt.target, ds=t.dataset||{};
   if(P.mode==='select'){
     if(t.classList.contains('vtx')){ P.sel=+ds.ri; P.drag={type:'vtx',ri:+ds.ri,pi:+ds.pi}; bindDrag(); return; }
@@ -1821,10 +1825,17 @@ function planDown(evt){
 }
 function planDrag(evt){
   if(P.pan){ doPan(evt); return; }
+  if(P.create){ P.create.cur=snapTo(rawPt(evt)); scheduleDraw(); return; }
   const r=rawPt(evt);
   if(P.drag){
-    if(P.drag.type==='vtx'){ P.rooms[P.drag.ri].points[P.drag.pi]=snapTo(r); scheduleDraw(); }
-    else if(P.drag.type==='room'){ const dx=r.x-P.drag.last.x, dy=r.y-P.drag.last.y; P.rooms[P.drag.ri].points.forEach(pt=>{pt.x+=dx;pt.y+=dy;}); P.drag.last=r; scheduleDraw(); }
+    const room=P.rooms[P.drag.ri];
+    if(P.drag.type==='vtx'){
+      if(room.shape==='circle'){ room.r=Math.max(5,dist({x:room.cx,y:room.cy},r)); regenCircle(room); }
+      else room.points[P.drag.pi]=snapTo(r);
+      scheduleDraw();
+    } else if(P.drag.type==='room'){ const dx=r.x-P.drag.last.x, dy=r.y-P.drag.last.y;
+      room.points.forEach(pt=>{pt.x+=dx;pt.y+=dy;}); if(room.shape==='circle'){ room.cx+=dx; room.cy+=dy; }
+      P.drag.last=r; scheduleDraw(); }
     return;
   }
   if(P._click && dist(r,P._click.raw)>4*pxWorld()) P._click.moved=true;
@@ -1832,10 +1843,28 @@ function planDrag(evt){
 function planUp(evt){
   unbindDrag();
   if(P.pan){ endPan(); return; }
+  if(P.create){ finishCreate(); return; }
   if(P.drag){ P.drag=null; draw(); return; }
   if(P._click && !P._click.moved) handleClick(evt);
   P._click=null;
 }
+function rid(){ return 'r'+Math.random().toString(36).slice(2,8); }
+function regenCircle(r){ const N=r.points.length||48; for(let i=0;i<N;i++){ const ang=i/N*2*Math.PI; r.points[i]={x:r.cx+Math.cos(ang)*r.r, y:r.cy+Math.sin(ang)*r.r}; } }
+function makeCircleRoom(cx,cy,rad,color,name){ const r={ id:rid(), name, color, points:new Array(48).fill(0).map(()=>({x:0,y:0})), height:2.7, openings:[], estado:'lisa', shape:'circle', cx, cy, r:rad }; regenCircle(r); return r; }
+function finishCreate(){
+  const cr=P.create; P.create=null; if(!cr){ draw(); return; }
+  const a=cr.start, b=cr.cur, color=ROOM_COLORS[P.rooms.length%ROOM_COLORS.length], nm='Sala '+(P.rooms.length+1);
+  if(cr.kind==='rect'){
+    const minx=Math.min(a.x,b.x),maxx=Math.max(a.x,b.x),miny=Math.min(a.y,b.y),maxy=Math.max(a.y,b.y);
+    if(maxx-minx<6||maxy-miny<6){ draw(); return; }
+    P.rooms.push({ id:rid(), name:nm, color, points:[{x:minx,y:miny},{x:maxx,y:miny},{x:maxx,y:maxy},{x:minx,y:maxy}], height:2.7, openings:[], estado:'lisa' });
+  } else {
+    const rad=dist(a,b); if(rad<6){ draw(); return; }
+    P.rooms.push(makeCircleRoom(a.x,a.y,rad,color,nm));
+  }
+  P.sel=P.rooms.length-1; setMode('select'); draw();
+}
+function setRoomDiameter(ri,v){ const r=P.rooms[ri]; if(!r||r.shape!=='circle')return; r.r=Math.max(1,(Number(v)||0)*P.scale/2); regenCircle(r); draw(); }
 function planHover(evt){
   const r=rawPt(evt); P.hover=r;
   $('hudCoord').textContent=`${(r.x/P.scale).toFixed(2)}, ${(r.y/P.scale).toFixed(2)} m`;
@@ -1899,7 +1928,10 @@ function addCalibPoint(evt){
 function planDblClick(evt){
   if(P.mode==='draw'){ closeRoom(); return; }
   const t=evt.target, ds=t.dataset||{};
-  if(t.classList.contains('edge-hit')) setEdgeLength(+ds.ri,+ds.ei);
+  if(t.classList.contains('edge-hit')){ const room=P.rooms[+ds.ri];
+    if(room&&room.shape==='circle'){ const cur=(2*room.r/P.scale).toFixed(2); const m=parseFloat(prompt('Diámetro del círculo (metros):',cur)); if(m>0){ room.r=m*P.scale/2; regenCircle(room); draw(); } }
+    else setEdgeLength(+ds.ri,+ds.ei);
+  }
 }
 function setEdgeLength(ri,ei){
   const r=P.rooms[ri]; if(!r) return; const a=r.points[ei], b=r.points[(ei+1)%r.points.length];
@@ -1962,6 +1994,14 @@ function drawSvg(){
   out+=buildGrid(vb,s,k);
   P.rooms.forEach((r,ri)=>{ out+=drawRoom(r,ri,s,k); });
   if(P.current.length) out+=drawCurrent(s,k);
+  if(P.create){ const a=P.create.start, b=P.create.cur;
+    if(P.create.kind==='rect'){ const x=Math.min(a.x,b.x),y=Math.min(a.y,b.y),w=Math.abs(b.x-a.x),hh=Math.abs(b.y-a.y);
+      out+=`<rect x="${x}" y="${y}" width="${w}" height="${hh}" class="draw-line" style="stroke-width:${1.6*k};stroke-dasharray:${6*k} ${4*k};fill:rgba(136,108,255,.08)"/>`;
+      out+=`<text class="edge-len" x="${x+w/2}" y="${y+hh/2}" text-anchor="middle" style="font-size:${13*k}px;stroke-width:${3*k}px">${(w/s).toFixed(2)} × ${(hh/s).toFixed(2)} m</text>`;
+    } else { const rad=dist(a,b);
+      out+=`<circle cx="${a.x}" cy="${a.y}" r="${rad}" class="draw-line" style="stroke-width:${1.6*k};stroke-dasharray:${6*k} ${4*k};fill:rgba(136,108,255,.08)"/>`;
+      out+=`<text class="edge-len" x="${a.x}" y="${a.y}" text-anchor="middle" style="font-size:${13*k}px;stroke-width:${3*k}px">Ø ${(2*rad/s).toFixed(2)} m</text>`;
+    } }
   if(P.calib.length){ out+=P.calib.map(p=>`<circle class="calib-pt" cx="${p.x}" cy="${p.y}" r="${4*k}" style="stroke-width:${1.5*k}"/>`).join('');
     if(P.calib.length===1&&P.hover) out+=`<line class="calib-line" x1="${P.calib[0].x}" y1="${P.calib[0].y}" x2="${P.hover.x}" y2="${P.hover.y}" style="stroke-width:${1.5*k}"/>`; }
   (P.repairs||[]).forEach(d=>{ const t=REPAIR_TYPES[d.kind]||REPAIR_TYPES.otro;
@@ -1975,7 +2015,18 @@ function buildGrid(vb,s,k){ const mv=vb.w/s; const step=mv>80?5:1, sp=step*s; le
   for(let y=y0;y<=y1;y+=sp){ const mj=Math.round(y/sp)%5===0; out+=`<line class="grid-line ${mj?'major':''}" x1="${vb.x}" y1="${y}" x2="${x1}" y2="${y}" style="stroke-width:${(mj?1.2:0.7)*k}"/>`; }
   return out;
 }
-function drawRoom(r,ri,s,k){ const pts=r.points.map(p=>`${p.x},${p.y}`).join(' '); const sel=P.sel===ri; let out='';
+function drawCircleRoom(r,ri,s,k){ const sel=P.sel===ri; let out='';
+  out+=`<circle class="room-poly ${sel?'sel':''}" data-ri="${ri}" cx="${r.cx}" cy="${r.cy}" r="${r.r}" style="stroke:${r.color};fill:${hexA(r.color,.15)};stroke-width:${2.4*k}"/>`;
+  out+=`<circle class="edge-hit" data-ri="${ri}" data-ei="0" cx="${r.cx}" cy="${r.cy}" r="${r.r}" fill="none" style="stroke-width:${16*k}"/>`;
+  (r.openings||[]).forEach(o=>{ out+=drawOpening(r,o,k); });
+  out+=`<text class="edge-len" x="${r.cx}" y="${r.cy-7*k}" text-anchor="middle" style="font-size:${12*k}px;stroke-width:${3*k}px">Ø ${(2*r.r/s).toFixed(2)} m</text>`;
+  out+=`<text class="room-lbl" x="${r.cx}" y="${r.cy+8*k}" style="font-size:${13*k}px;stroke-width:${4*k}px">${esc(r.name)}</text>`;
+  out+=`<text class="room-area" x="${r.cx}" y="${r.cy+22*k}" style="font-size:${11*k}px;stroke-width:${4*k}px">${floorArea(r).toFixed(2)} m² · ${wallArea(r).toFixed(1)} pared</text>`;
+  if(P.mode==='select') out+=`<circle class="vtx" data-ri="${ri}" data-pi="0" cx="${r.cx+r.r}" cy="${r.cy}" r="${6*k}" style="stroke-width:${1.5*k}"/>`;
+  return out;
+}
+function drawRoom(r,ri,s,k){ if(r.shape==='circle') return drawCircleRoom(r,ri,s,k);
+  const pts=r.points.map(p=>`${p.x},${p.y}`).join(' '); const sel=P.sel===ri; let out='';
   out+=`<polygon class="room-poly ${sel?'sel':''}" data-ri="${ri}" points="${pts}" style="stroke:${r.color};fill:${hexA(r.color,.15)};stroke-width:${2.4*k}"/>`;
   for(let i=0;i<r.points.length;i++){ const a=r.points[i], b=r.points[(i+1)%r.points.length];
     out+=`<line class="edge-hit" data-ri="${ri}" data-ei="${i}" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" style="stroke-width:${16*k}"/>`;
@@ -2027,6 +2078,7 @@ function renderRoomsPanel(){
         <div class="pd">pared<b>${wallArea(r).toFixed(2)} m²</b></div>
       </div>
       <div class="ht">Altura <input type="number" step="0.05" value="${r.height||2.7}" oninput="setRoomHeight(${ri},this.value)"> m</div>
+      ${r.shape==='circle'?`<div class="ht">⬭ Diámetro <input type="number" step="0.05" value="${(2*r.r/P.scale).toFixed(2)}" oninput="setRoomDiameter(${ri},this.value)"> m</div>`:''}
       <div class="ht">Estado <select onchange="setRoomEstado(${ri},this.value)" style="flex:1">${Object.keys(ESTADO_LBL).map(k=>`<option value="${k}" ${(r.estado||'lisa')===k?'selected':''}>${ESTADO_LBL[k]}</option>`).join('')}</select></div>
       ${(r.openings||[]).map((o,oi)=>`<div class="ops">${o.kind==='door'?'🚪':'🪟'}
         <input type="number" step="0.05" value="${o.w}" oninput="setOpening(${ri},${oi},'w',this.value)">×<input type="number" step="0.05" value="${o.h}" oninput="setOpening(${ri},${oi},'h',this.value)"> m
