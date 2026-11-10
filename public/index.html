@@ -995,8 +995,15 @@ function renderMaterials(){
   const names={'pintura-interior':'Pintura interior','pintura-exterior':'Pintura exterior','gypsum':'Gypsum','remodelacion':'Remodelación','otro':'Otro'};
   const keys=Object.keys(groups);
   $('matPanel').style.display = keys.length?'':'none';
-  $('matList').innerHTML = keys.map(k=>`<div class="mat-item"><span>${names[k]||k} · <span style="color:var(--muted)">${groups[k].area.toFixed(2)} m²</span></span><b>${groups[k].gal} galón${groups[k].gal===1?'':'es'}</b></div>`).join('');
+  $('matList').innerHTML = keys.map(k=>{ const g=groups[k].gal; return `<div class="mat-item"><span>${names[k]||k} · <span style="color:var(--muted)">${groups[k].area.toFixed(2)} m²</span></span><span style="text-align:right"><b>${g} galón${g===1?'':'es'}</b><div style="font-size:12px;color:var(--cyan2)">${tanksText(g)}</div></span></div>`; }).join('');
+  let totalGal=keys.reduce((s,k)=>s+groups[k].gal,0);
+  if(keys.length>1){ $('matList').innerHTML += `<div class="mat-item" style="border-color:var(--border2);background:rgba(136,108,255,.08)"><span><b>Total pintura</b></span><span style="text-align:right"><b>${totalGal} galones</b><div style="font-size:12px;color:var(--cyan2)">${tanksText(totalGal)}</div></span></div>`; }
 }
+// Convierte galones a tanques de 5gl (1 tanque = 5 galones)
+function tanksText(g){ g=Math.round(g); const t=Math.floor(g/5), r=g%5; const parts=[];
+  if(t>0) parts.push(`${t} tanque${t===1?'':'s'} de 5gl`);
+  if(r>0) parts.push(`${r} gl`);
+  return '= '+(parts.join(' + ')||'0 gl'); }
 
 async function saveQuote(){
   const q=S.editing;
