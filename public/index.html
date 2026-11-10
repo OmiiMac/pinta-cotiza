@@ -909,7 +909,10 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
   <div class="lb-inner" onclick="event.stopPropagation()" style="max-width:900px">
     <button class="lb-close" onclick="close3D()">✕</button>
     <div id="view3dBox"></div>
-    <div class="lb-cap">Vista 3D (isométrica) · muestra los colores asignados a cada sala</div>
+    <div class="lb-cap" style="display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap">
+      <span>Vista 3D (isométrica) · 4 paredes + techo · colores por sala</span>
+      <button class="btn sm ghost" onclick="toggleRoof()">🏠 Techo sí/no</button>
+    </div>
   </div>
 </div>
 
@@ -2006,6 +2009,8 @@ function projectToQuote(){
   S.editing=q; fillEditor(); go('editor'); toast('Presupuesto cargado en una cotización ✓');
 }
 // ---- Vista 3D isométrica ----
+let _roof3d=true;
+function toggleRoof(){ _roof3d=!_roof3d; show3D(); }
 function iso3(x,y,z){ return { X:(x-y)*0.866, Y:(x+y)*0.5 - z }; }
 function shadeHex(hex,f){ const n=String(hex||'#cccccc').replace('#',''); let r=parseInt(n.slice(0,2),16),g=parseInt(n.slice(2,4),16),b=parseInt(n.slice(4,6),16);
   r=Math.min(255,Math.round(r*f));g=Math.min(255,Math.round(g*f));b=Math.min(255,Math.round(b*f)); return `rgb(${r},${g},${b})`; }
@@ -2020,6 +2025,7 @@ function show3D(){
       const horiz=Math.abs(b.x-a.x)>=Math.abs(b.y-a.y);
       faces.push({ pts:[a0,b0,b1,a1], fill:shadeHex(base, horiz?0.85:0.6), stroke:'rgba(0,0,0,.28)', depth:(a.x+b.x+a.y+b.y)/2 });
     }
+    if(_roof3d){ const roof=room.points.map(p=>iso3(p.x,p.y,h)); faces.push({ pts:roof, fill:'#b9b2a4', stroke:'rgba(0,0,0,.3)', depth:1e12 }); }
   });
   faces.sort((p,q)=>p.depth-q.depth);
   let xs=[],ys=[]; faces.forEach(f=>f.pts.forEach(p=>{xs.push(p.X);ys.push(p.Y);}));
@@ -2198,6 +2204,9 @@ function setEdgeLength(ri,ei){
   if(!(m>0)) return; const ang=Math.atan2(b.y-a.y,b.x-a.x), npx=m*P.scale;
   b.x=a.x+Math.cos(ang)*npx; b.y=a.y+Math.sin(ang)*npx; draw(); toast('Pared ajustada a '+m+' m');
 }
+function setEdgeLengthInput(ri,ei,v){ const m=parseFloat(v); const r=P.rooms[ri]; if(!r||!(m>0)) return;
+  const a=r.points[ei], b=r.points[(ei+1)%r.points.length]; const ang=Math.atan2(b.y-a.y,b.x-a.x), npx=m*P.scale;
+  b.x=a.x+Math.cos(ang)*npx; b.y=a.y+Math.sin(ang)*npx; draw(); }
 function delRoom(ri){ P.rooms.splice(ri,1); P.sel=null; draw(); }
 function renameRoom(ri,v){ P.rooms[ri].name=v; drawSvg(); }
 function setRoomHeight(ri,v){ P.rooms[ri].height=Math.max(0,Number(v)||0); drawSvg(); updateTotals(); }
@@ -2355,6 +2364,10 @@ function renderRoomsPanel(){
       ${r.shape==='circle'?`<div class="ht">⬭ Diámetro <input type="number" step="0.05" value="${(2*r.r/P.scale).toFixed(2)}" oninput="setRoomDiameter(${ri},this.value)"> m</div>`:''}
       <div class="ht">Estado <select onchange="setRoomEstado(${ri},this.value)" style="flex:1">${Object.keys(ESTADO_LBL).map(k=>`<option value="${k}" ${(r.estado||'lisa')===k?'selected':''}>${ESTADO_LBL[k]}</option>`).join('')}</select></div>
       <div class="ht">🎨 Color <input type="color" value="${r.paintColor||'#cfc3a8'}" oninput="setRoomPaint(${ri},this.value)" style="width:42px;height:28px;padding:2px">${r.paintColor?`<button class="btn sm ghost" onclick="setRoomPaint(${ri},'')">quitar</button>`:''}</div>
+      ${(P.sel===ri && r.shape!=='circle') ? `<div style="margin-top:8px;border-top:1px dashed var(--border);padding-top:8px">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:5px">📏 Medidas de paredes — escribe el valor exacto</div>
+        ${r.points.map((p,ei)=>{ const a=p,b=r.points[(ei+1)%r.points.length]; return `<div class="ops" style="justify-content:flex-start">Pared ${ei+1} <input type="number" step="0.05" value="${(dist(a,b)/P.scale).toFixed(2)}" onchange="setEdgeLengthInput(${ri},${ei},this.value)" style="width:78px"> m</div>`; }).join('')}
+      </div>`:''}
       ${(r.openings||[]).map((o,oi)=>`<div class="ops">${o.kind==='door'?'🚪':'🪟'}
         <input type="number" step="0.05" value="${o.w}" oninput="setOpening(${ri},${oi},'w',this.value)">×<input type="number" step="0.05" value="${o.h}" oninput="setOpening(${ri},${oi},'h',this.value)"> m
         <button class="btn sm danger icon" onclick="delOpening(${ri},${oi})">✕</button></div>`).join('')}
