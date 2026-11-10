@@ -757,6 +757,7 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
           <label class="switch" style="margin:0"><input type="checkbox" id="pl_ortho" checked> ⊾ 90/45°</label>
         </div>
         <div class="plan-hint" id="planModeHint"></div>
+        <div class="bgbar" id="floorBar"></div>
         <div class="plan-stage">
           <svg id="planSvg" preserveAspectRatio="xMidYMid meet"></svg>
           <div class="plan-hud">
@@ -1842,9 +1843,21 @@ function planCalcDefaults(){ const s=S.settings||{}; return {
   pgal:Number(s.precio_galon||25), rend:Number(s.default_yield||35), manos:Number(s.default_coats||2),
   waste:Number(s.desperdicio||12), umbral:Number(s.umbral_vano||1.5),
   tbase:Number(s.tarifa_base_m2||12), trec:Number(s.tarifa_recorte_ml||4.5), rejaM2:Number(s.reja_cost_m2||35) }; }
-function blankPlan(){ return { id:null,name:'',client_id:'',scale:50,floors:1,rooms:[],bg:null,calc:planCalcDefaults(),repairs:[],repairKind:'grieta',furniture:[],furnKind:'sofa',stairs:[],rails:[],railKind:'barandal',
+function blankPlan(){ return { id:null,name:'',client_id:'',scale:50,floors:1,floorActive:null,rooms:[],bg:null,calc:planCalcDefaults(),repairs:[],repairKind:'grieta',furniture:[],furnKind:'sofa',stairs:[],rails:[],railKind:'barandal',
   mode:'rect',current:[],sel:null,drag:null,pan:null,calib:[],hover:null,create:null,vb:{x:0,y:0,w:1200,h:1200/ASPECT} }; }
-function setFloors(v){ P.floors=Math.max(1,Math.min(60,Math.round(Number(v)||1))); renderCalcResult(); renderLiveCounters(); }
+function setFloors(v){ P.floors=Math.max(1,Math.min(60,Math.round(Number(v)||1))); if(P.floorActive>P.floors) P.floorActive=null; renderFloorBar(); draw(); }
+function setFloorActive(f){ P.floorActive = (f==='all')?null:Number(f); renderFloorBar(); draw(); }
+function renderFloorBar(){ const el=$('floorBar'); if(!el) return; const n=Math.max(1,Math.round(P.floors||1));
+  if(n<2){ el.classList.remove('show'); el.innerHTML=''; return; }
+  el.classList.add('show');
+  const btn=(val,lbl)=>`<button class="btn sm ${String(P.floorActive??'all')===String(val)?'':'ghost'}" onclick="setFloorActive('${val}')">${lbl}</button>`;
+  let h='<span>🏢 Editar piso:</span> '+btn('all','Todos');
+  for(let f=1;f<=n;f++) h+=' '+btn(f,'Piso '+f);
+  h+=' <span style="color:var(--muted2)">Las ventanas/puertas que agregues se asignan al piso activo.</span>';
+  el.innerHTML=h;
+}
+function openAppliesFloor(o,f){ return o.floor==null || Number(o.floor)===Number(f); }
+function openVisible(o){ return P.floorActive==null || openAppliesFloor(o,P.floorActive); }
 function newPlan(){ P=blankPlan(); mountPlanEditor(); go('planeditor'); }
 async function openPlan(id){
   try{ const p=await api.get('/api/plans/'+id); P=blankPlan();
@@ -1870,7 +1883,7 @@ function mountPlanEditor(){
   svg.onpointerdown=planDown; svg.onpointermove=planHover; svg.ondblclick=planDblClick; svg.onwheel=planWheel;
   $('bgbar').classList.toggle('show',!!P.bg);
   if(P.bg) $('bg_op').value=Math.round((P.bg.opacity??0.6)*100);
-  renderCalcParams();
+  renderCalcParams(); renderFloorBar();
   setMode(P.mode);
   if(P.rooms.length||P.bg) fitView(); else { applyVB(); draw(); }
 }
@@ -1966,11 +1979,11 @@ function railLenM(r){ return dist(r.a,r.b)/P.scale; }
 function railsTotal(){ return (P.rails||[]).reduce((s,r)=>s+railLenM(r)*(+r.costMl||0),0); }
 function pc(){ const c=P.calc||planCalcDefaults(); return c; }
 function roomFc(r){ const est=ESTADO_FC[r.estado||'lisa']||1; const alt=(+r.height||2.7)>=3?1.35:1; return est*alt; }
-function computeRoom(r){
+function computeRoom(r, floor){
   const c=pc(), h=(+r.height||2.7);
   let bruta=0; for(let i=0;i<r.points.length;i++) bruta += (dist(r.points[i],r.points[(i+1)%r.points.length])/P.scale)*h;
   let descMat=0, perimRecorte=0;
-  (r.openings||[]).forEach(o=>{ const a=(+o.w||0)*(+o.h||0); const per=2*((+o.w||0)+(+o.h||0));
+  (r.openings||[]).forEach(o=>{ if(floor!=null && !openAppliesFloor(o,floor)) return; const a=(+o.w||0)*(+o.h||0); const per=2*((+o.w||0)+(+o.h||0));
     perimRecorte+=per; if(a>c.umbral) descMat+=a; });
   const neta=Math.max(0, bruta-descMat);
   const galones=neta>0 ? (neta*c.manos/(c.rend||35))*(1+(c.waste||0)/100) : 0;
@@ -1979,17 +1992,17 @@ function computeRoom(r){
   return { bruta, descMat, neta, perimRecorte, galones, fc, mano };
 }
 function computeProject(){
-  const c=pc(); const rows=P.rooms.map(r=>({ r, ...computeRoom(r) }));
-  const t={bruta:0,neta:0,galones:0,perim:0,mano:0};
-  rows.forEach(x=>{ t.bruta+=x.bruta; t.neta+=x.neta; t.galones+=x.galones; t.perim+=x.perimRecorte; t.mano+=x.mano; });
-  const floors=Math.max(1,Math.round(P.floors||1)); t.floors=floors;
-  if(floors>1){ t.bruta*=floors; t.neta*=floors; t.galones*=floors; t.mano*=floors; t.perim*=floors; }
+  const c=pc(); const floors=Math.max(1,Math.round(P.floors||1));
+  const t={bruta:0,neta:0,galones:0,perim:0,mano:0,floors};
+  const rows=P.rooms.map(r=>{ const agg={ r, bruta:0,neta:0,galones:0,perimRecorte:0,mano:0, fc:roomFc(r) };
+    for(let f=1;f<=floors;f++){ const cr=computeRoom(r,f); agg.bruta+=cr.bruta; agg.neta+=cr.neta; agg.galones+=cr.galones; agg.perimRecorte+=cr.perimRecorte; agg.mano+=cr.mano; }
+    t.bruta+=agg.bruta; t.neta+=agg.neta; t.galones+=agg.galones; t.perim+=agg.perimRecorte; t.mano+=agg.mano; return agg; });
   t.galonesUp=Math.ceil(t.galones-1e-9)||0;
   t.materiales=t.galonesUp*c.pgal;
   t.manoObra=t.mano;
   t.reparaciones=repairsTotal();
   t.proteccion=furnitureTotal();
-  let rejaA=0, rejaN=0; P.rooms.forEach(r=>(r.openings||[]).forEach(o=>{ if(o.reja){ rejaN++; rejaA+=(+o.w||0)*(+o.h||0); } }));
+  let rejaA=0, rejaN=0; for(let f=1;f<=floors;f++){ P.rooms.forEach(r=>(r.openings||[]).forEach(o=>{ if(o.reja && openAppliesFloor(o,f)){ rejaN++; rejaA+=(+o.w||0)*(+o.h||0); } })); }
   t.rejasN=rejaN; t.rejas=rejaA*(c.rejaM2||35);
   t.escaleras=stairsTotal(); t.escalerasN=(P.stairs||[]).length;
   t.barandales=railsTotal(); t.barandalesN=(P.rails||[]).length; t.barandalesML=(P.rails||[]).reduce((s,r)=>s+railLenM(r),0);
@@ -2102,7 +2115,7 @@ function showFront(){
   for(let f=0;f<floors;f++){ body+=`<text x="${6*K}" y="${H-f*fh-6*K}" font-size="${12*K}" fill="#888">Piso ${f+1}</text>`; }
   P.rooms.forEach(r=>(r.openings||[]).forEach(o=>{ const a=r.points[o.edge], b=r.points[(o.edge+1)%r.points.length]; if(!a||!b) return;
     const cx=(a.x+(b.x-a.x)*o.pos)-minx, ow=(o.w||1)*s, oh=(o.h||1)*s, x=cx-ow/2;
-    for(let f=0;f<floors;f++){ const base=H-f*fh;
+    for(let f=0;f<floors;f++){ if(!openAppliesFloor(o,f+1)) continue; const base=H-f*fh;
       if(o.kind==='door'){ const y=base-oh; body+=`<rect x="${x}" y="${y}" width="${ow}" height="${oh}" fill="#caa06a" stroke="#6b4e22" stroke-width="${1.4*K}"/><circle cx="${x+ow*0.84}" cy="${y+oh/2}" r="${2*K}" fill="#333"/>`; }
       else { const sill=0.95*s, y=base-sill-oh; body+=`<rect x="${x}" y="${y}" width="${ow}" height="${oh}" fill="#bcd7ee" stroke="#2a4a66" stroke-width="${1.4*K}"/>`+
         `<line x1="${x+ow/2}" y1="${y}" x2="${x+ow/2}" y2="${y+oh}" stroke="#2a4a66" stroke-width="${1*K}"/><line x1="${x}" y1="${y+oh/2}" x2="${x+ow}" y2="${y+oh/2}" stroke="#2a4a66" stroke-width="${1*K}"/>`;
@@ -2270,11 +2283,12 @@ function addOpening(evt,kind){
   P.rooms.forEach((room,ri)=>{ for(let i=0;i<room.points.length;i++){ const a=room.points[i],b=room.points[(i+1)%room.points.length]; const pr=projSeg(r,a,b); const d=dist(r,pr.pt); if(!best||d<best.d) best={d,ri,ei:i,pos:pr.t}; } });
   if(!best||best.d>P.scale*0.8){ toast('Acerca el clic a una pared',true); return; }
   const def=kind==='door'?{w:0.9,h:2.1}:{w:1.2,h:1.1};
-  const room=P.rooms[best.ri]; room.openings=room.openings||[]; room.openings.push({edge:best.ei,pos:best.pos,w:def.w,h:def.h,kind,style:kind==='door'?'sencilla':'fija',reja:false});
-  P.sel=best.ri; draw(); toast((kind==='door'?'🚪 Puerta':'🪟 Ventana')+' agregada');
+  const room=P.rooms[best.ri]; room.openings=room.openings||[]; room.openings.push({edge:best.ei,pos:best.pos,w:def.w,h:def.h,kind,style:kind==='door'?'sencilla':'fija',reja:false,floor:P.floorActive==null?null:P.floorActive});
+  P.sel=best.ri; draw(); toast((kind==='door'?'🚪 Puerta':'🪟 Ventana')+' agregada'+(P.floorActive?(' (piso '+P.floorActive+')'):''));
 }
 function setOpeningStyle(ri,oi,v){ P.rooms[ri].openings[oi].style=v; drawSvg(); }
 function toggleReja(ri,oi,on){ P.rooms[ri].openings[oi].reja=!!on; draw(); }
+function setOpeningFloor(ri,oi,v){ P.rooms[ri].openings[oi].floor = (v==='all')?null:Number(v); draw(); }
 function addCalibPoint(evt){
   P.calib.push(rawPt(evt)); draw();
   if(P.calib.length===2){ const px=dist(P.calib[0],P.calib[1]);
@@ -2396,7 +2410,7 @@ function roomFill(r){ return r.paintColor?hexA(r.paintColor,.6):hexA(r.color,.15
 function drawCircleRoom(r,ri,s,k){ const sel=P.sel===ri; let out='';
   out+=`<circle class="room-poly ${sel?'sel':''}" data-ri="${ri}" cx="${r.cx}" cy="${r.cy}" r="${r.r}" style="stroke:${r.color};fill:${roomFill(r)};stroke-width:${2.4*k}"/>`;
   out+=`<circle class="edge-hit" data-ri="${ri}" data-ei="0" cx="${r.cx}" cy="${r.cy}" r="${r.r}" fill="none" style="stroke-width:${16*k}"/>`;
-  (r.openings||[]).forEach(o=>{ out+=drawOpening(r,o,k); });
+  (r.openings||[]).forEach(o=>{ if(openVisible(o)) out+=drawOpening(r,o,k); });
   out+=`<text class="edge-len" x="${r.cx}" y="${r.cy-7*k}" text-anchor="middle" style="font-size:${12*k}px;stroke-width:${3*k}px">Ø ${(2*r.r/s).toFixed(2)} m</text>`;
   out+=`<text class="room-lbl" x="${r.cx}" y="${r.cy+8*k}" style="font-size:${13*k}px;stroke-width:${4*k}px">${esc(r.name)}</text>`;
   out+=`<text class="room-area" x="${r.cx}" y="${r.cy+22*k}" style="font-size:${11*k}px;stroke-width:${4*k}px">${floorArea(r).toFixed(2)} m² · ${wallArea(r).toFixed(1)} pared</text>`;
@@ -2410,7 +2424,7 @@ function drawRoom(r,ri,s,k){ if(r.shape==='circle') return drawCircleRoom(r,ri,s
     out+=`<line class="edge-hit" data-ri="${ri}" data-ei="${i}" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" style="stroke-width:${16*k}"/>`;
     const mx=(a.x+b.x)/2, my=(a.y+b.y)/2; let nx=-(b.y-a.y), ny=(b.x-a.x); const nl=Math.hypot(nx,ny)||1; nx/=nl; ny/=nl;
     out+=`<text class="edge-len" x="${mx+nx*11*k}" y="${my+ny*11*k}" text-anchor="middle" style="font-size:${12*k}px;stroke-width:${3*k}px">${(dist(a,b)/s).toFixed(2)} m</text>`; }
-  (r.openings||[]).forEach(o=>{ out+=drawOpening(r,o,k); });
+  (r.openings||[]).forEach(o=>{ if(openVisible(o)) out+=drawOpening(r,o,k); });
   const cx=r.points.reduce((t,p)=>t+p.x,0)/r.points.length, cy=r.points.reduce((t,p)=>t+p.y,0)/r.points.length;
   out+=`<text class="room-lbl" x="${cx}" y="${cy-2*k}" style="font-size:${13*k}px;stroke-width:${4*k}px">${esc(r.name)}</text>`;
   out+=`<text class="room-area" x="${cx}" y="${cy+13*k}" style="font-size:${11*k}px;stroke-width:${4*k}px">${floorArea(r).toFixed(2)} m² · ${wallArea(r).toFixed(1)} pared</text>`;
@@ -2520,9 +2534,10 @@ function renderRoomsPanel(){
         <div style="font-size:11px;color:var(--muted);margin-bottom:5px">📏 Medidas de paredes — escribe el valor exacto</div>
         ${r.points.map((p,ei)=>{ const a=p,b=r.points[(ei+1)%r.points.length]; return `<div class="ops" style="justify-content:flex-start">Pared ${ei+1} <input type="number" step="0.05" value="${(dist(a,b)/P.scale).toFixed(2)}" onchange="setEdgeLengthInput(${ri},${ei},this.value)" style="width:78px"> m</div>`; }).join('')}
       </div>`:''}
-      ${(r.openings||[]).map((o,oi)=>{ const styles=o.kind==='door'?[['sencilla','Sencilla'],['doble','Doble'],['corrediza','Corrediza']]:[['fija','Fija'],['corrediza','Corrediza'],['batiente','Batiente'],['ventanal','Ventanal']]; return `<div class="ops" style="flex-wrap:wrap">${o.kind==='door'?'🚪':'🪟'}
+      ${(r.openings||[]).map((o,oi)=>({o,oi})).filter(x=>openVisible(x.o)).map(({o,oi})=>{ const styles=o.kind==='door'?[['sencilla','Sencilla'],['doble','Doble'],['corrediza','Corrediza']]:[['fija','Fija'],['corrediza','Corrediza'],['batiente','Batiente'],['ventanal','Ventanal']]; const nf=Math.max(1,Math.round(P.floors||1)); return `<div class="ops" style="flex-wrap:wrap">${o.kind==='door'?'🚪':'🪟'}
         <input type="number" step="0.05" value="${o.w}" oninput="setOpening(${ri},${oi},'w',this.value)" style="width:50px">×<input type="number" step="0.05" value="${o.h}" oninput="setOpening(${ri},${oi},'h',this.value)" style="width:50px"> m
         <select onchange="setOpeningStyle(${ri},${oi},this.value)" style="flex:0 1 auto">${styles.map(st=>`<option value="${st[0]}" ${(o.style||styles[0][0])===st[0]?'selected':''}>${st[1]}</option>`).join('')}</select>
+        ${nf>1?`<select onchange="setOpeningFloor(${ri},${oi},this.value)" title="Piso" style="flex:0 1 auto"><option value="all" ${o.floor==null?'selected':''}>Todos</option>${Array.from({length:nf},(_,i)=>`<option value="${i+1}" ${Number(o.floor)===i+1?'selected':''}>P${i+1}</option>`).join('')}</select>`:''}
         ${o.kind==='window'?`<label class="switch" style="margin:0">🔩<input type="checkbox" ${o.reja?'checked':''} onchange="toggleReja(${ri},${oi},this.checked)"></label>`:''}
         <button class="btn sm danger icon" onclick="delOpening(${ri},${oi})">✕</button></div>`; }).join('')}
     </div>`).join('')+repairsPanelHtml()+furniturePanelHtml()+stairsPanelHtml()+railsPanelHtml();
