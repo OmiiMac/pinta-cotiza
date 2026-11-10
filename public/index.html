@@ -462,6 +462,24 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
 .kpi .v,.hero .clock .t{font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
 .btn.primary,.btn.green{color:#1a1403}
 .badge.aprobada{color:var(--cyan2)}
+
+/* Ajustes finos para TELÉFONO (al final para que manden sobre lo anterior) */
+@media(max-width:720px){
+  .hero,.b-hero{padding:18px 16px}
+  .hero h1{font-size:21px}
+  .hero .clock{margin-left:0}
+  .hero .clock .t{font-size:22px}
+  .bento{gap:12px}
+  #donut{gap:12px}
+  .donut-svg{max-width:150px}
+  .b-kpis .stats{grid-template-columns:repeat(2,1fr)}
+  .qa2{font-size:12.5px;padding:10px 6px}
+  .cmdbar input{padding:13px 4px}
+}
+@media(max-width:380px){
+  .b-kpis .stats{grid-template-columns:1fr 1fr;gap:10px}
+  .lg-mo{min-width:58px}
+}
 </style>
 </head>
 <body>
