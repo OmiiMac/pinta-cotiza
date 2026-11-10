@@ -625,6 +625,7 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
         <label class="f"><span>Símbolo moneda</span><input id="s_currency_symbol"></label>
         <label class="f"><span>Nombre impuesto</span><input id="s_tax_name"></label>
         <label class="f"><span>Impuesto % por defecto</span><input type="number" id="s_tax_rate" step="0.01"></label>
+        <label class="f"><span>💰 Ganancia % por defecto</span><input type="number" id="s_default_margin" step="1" title="Se aplica a cada cotización nueva; se puede ajustar en cada una"></label>
         <label class="f"><span>Prefijo nº</span><input id="s_quote_prefix"></label>
         <label class="f"><span>Validez (días)</span><input type="number" id="s_validity_days"></label>
         <label class="f"><span>Manos por defecto</span><input type="number" id="s_default_coats"></label>
@@ -821,7 +822,7 @@ function blankQuote(withItem){
     id:null, number:'', client_id:'', title:'', status:'borrador',
     issue_date:new Date().toISOString().slice(0,10),
     valid_until:new Date(Date.now()+ (Number(S.settings.validity_days||15))*864e5).toISOString().slice(0,10),
-    tax_rate:Number(S.settings.tax_rate||7), discount_type:'none', discount_value:0,
+    tax_rate:Number(S.settings.tax_rate||7), margin_pct:Number(S.settings.default_margin||0), discount_type:'none', discount_value:0,
     notes:'', terms:S.settings.default_terms||'', items: withItem?[blankItem()]:[]
   };
 }
@@ -1272,7 +1273,7 @@ async function delCatalog(id){
 // ============================================================
 // SETTINGS
 // ============================================================
-const SETTING_KEYS=['company_name','company_tagline','company_phone','company_email','company_address','company_logo','currency_symbol','tax_name','tax_rate','quote_prefix','validity_days','default_coats','default_yield','default_terms'];
+const SETTING_KEYS=['company_name','company_tagline','company_phone','company_email','company_address','company_logo','currency_symbol','tax_name','tax_rate','default_margin','quote_prefix','validity_days','default_coats','default_yield','default_terms'];
 function fillSettings(){ SETTING_KEYS.forEach(k=>{ const el=$('s_'+k); if(el) el.value=S.settings[k]??''; }); }
 async function saveSettings(){
   const b={}; SETTING_KEYS.forEach(k=>{ const el=$('s_'+k); if(el) b[k]=el.value; });
@@ -1584,7 +1585,7 @@ function planToQuote(){
   S.editing={ id:null, number:'', client_id:$('pl_client').value||'', title:$('pl_name').value||'',
     status:'borrador', issue_date:new Date().toISOString().slice(0,10),
     valid_until:new Date(Date.now()+vdays*864e5).toISOString().slice(0,10),
-    tax_rate:Number(S.settings.tax_rate||7), discount_type:'none', discount_value:0, notes:'', terms:S.settings.default_terms||'',
+    tax_rate:Number(S.settings.tax_rate||7), margin_pct:Number(S.settings.default_margin||0), discount_type:'none', discount_value:0, notes:'', terms:S.settings.default_terms||'',
     items:P.rooms.map(r=>({ id:null, category:'pintura-interior', cost_type:'mano-obra', description:'Paredes '+r.name, unit:'m2', is_area:0,
       width:0,height:0,qcount:1,deduction:0, qty:Number(wallArea(r).toFixed(2)), unit_price:0,
       coats:Number(S.settings.default_coats||2), paint_yield:Number(S.settings.default_yield||35) })) };

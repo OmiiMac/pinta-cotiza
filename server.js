@@ -146,7 +146,8 @@ const DEFAULT_META = {
   validity_days:   '15',
   default_terms:   'Precios en USD. Validez de la oferta segun fecha indicada. 50% de adelanto para iniciar, 50% contra entrega. No incluye trabajos no especificados en esta cotizacion.',
   default_coats:   '2',
-  default_yield:   '35'           // rendimiento m2 por galon (referencia)
+  default_yield:   '35',          // rendimiento m2 por galon (referencia)
+  default_margin:  '35'           // ganancia % por defecto (competitivo Panama)
 };
 function metaGet(key) {
   const r = db.prepare('SELECT value FROM meta WHERE key=?').get(key);
