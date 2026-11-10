@@ -154,6 +154,7 @@ const DEFAULT_META = {
   umbral_vano:     '1.5',         // m2: vanos <= no descuentan material
   tarifa_base_m2:  '12',          // mano de obra por m2 (rodillo)
   tarifa_recorte_ml:'4.5',        // mano de obra por metro lineal de recorte/perfilado
+  reja_cost_m2:    '35',          // costo de reja metalica por m2 de ventana
   // --- Niveles Basico/Estandar/Premium ---
   niveles_on:         '1',        // mostrar niveles en la cotizacion impresa
   nivel_basico_factor:'0.88',     // precio = total x factor
