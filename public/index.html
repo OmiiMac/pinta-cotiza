@@ -1699,6 +1699,13 @@ const PRICE_REF=[
    {name:'Premium', val:50, spec:'Trabajos exclusivos o urgentes.'},
  ]},
 ];
+const PRICE_WORK=[
+  {name:'Pintura exterior / fachada', val:5.50, unit:'$/m²', cost_type:'mano-obra', toParam:'tarifa_base_m2', spec:'Mano de obra (andamio/altura aparte). Materiales por galón. Rango $4.50–7.'},
+  {name:'Gypsum — cielo raso (instalación)', val:10, unit:'$/m²', cost_type:'mano-obra', spec:'Mano de obra de cielo raso en drywall. Rango $8–12 (Camarounds).'},
+  {name:'Gypsum — pared (todo incluido)', val:31, unit:'$/m²', cost_type:'materiales', spec:'Material + mano de obra, pared con láminas de yeso (CYPE). M.O. ≈ $4.3.'},
+  {name:'Impermeabilización acrílica (techo)', val:10, unit:'$/m²', cost_type:'materiales', spec:'Sistema acrílico, material + mano de obra. Estimado, confirmar. Rango $8–14.'},
+  {name:'Impermeabilización membrana/asfáltica', val:20, unit:'$/m²', cost_type:'materiales', spec:'Membrana asfáltica/poliuretano. Estimado, confirmar. Rango $15–28.'},
+];
 const PRICE_INFO=[
  { title:'👷 Jornal de pintor (referencia, informativo)', rows:[
    {name:'Mínimo legal construcción (R1)', val:'$3.51/h · ~$28/día', spec:'Decreto 13, vigente ene 2026–2027. Ciudad de Panamá.'},
@@ -1734,6 +1741,22 @@ function renderPrices(){
       </tbody></table></div>
     </div>`;
   }).join('');
+  // Precios por tipo de trabajo (gypsum, exterior, impermeabilización)
+  html+=`<div class="panel" style="margin-bottom:14px">
+    <h3 class="ttl" style="margin:0 0 4px">🧱 Precios por tipo de trabajo (por m²)</h3>
+    <div class="hint" style="margin:0 0 8px">Gypsum, pintura exterior e impermeabilización. Toca <b>“➕ Al catálogo”</b> para guardarlo como servicio y usarlo al cotizar.</div>
+    <div class="tscroll"><table class="tbl"><thead><tr><th>Trabajo</th><th>Precio</th><th>Tipo</th><th>Especificación</th><th></th></tr></thead><tbody>
+    ${PRICE_WORK.map((w,wi)=>`<tr>
+      <td><b>${esc(w.name)}</b></td>
+      <td class="mono" style="white-space:nowrap">${w.val} ${w.unit}</td>
+      <td><span class="tag">${COST_LBL[w.cost_type]||w.cost_type}</span></td>
+      <td style="color:var(--muted)">${esc(w.spec)}</td>
+      <td class="num" style="white-space:nowrap">
+        <button class="btn sm green" onclick="addWorkToCatalog(${wi})">➕ Al catálogo</button>
+        ${w.toParam?`<button class="btn sm ghost" onclick="applyPrice('${w.toParam}',${w.val})">Usar M.O.</button>`:''}
+      </td></tr>`).join('')}
+    </tbody></table></div>
+  </div>`;
   html+=PRICE_INFO.map(cat=>`<div class="panel" style="margin-bottom:14px">
       <h3 class="ttl" style="margin:0 0 10px">${cat.title}</h3>
       <div class="tscroll"><table class="tbl"><thead><tr><th>Concepto</th><th>Referencia</th><th>Detalle</th></tr></thead><tbody>
@@ -1766,6 +1789,12 @@ async function saveCustomPrice(param){
 async function delCustomPrice(gi){
   const arr=getCustom(); if(gi<0||gi>=arr.length) return; arr.splice(gi,1);
   try{ await saveCustom(arr); renderPrices(); toast('Eliminado'); }catch(e){ toast(e.message,true); }
+}
+async function addWorkToCatalog(wi){
+  const w=PRICE_WORK[wi]; if(!w) return;
+  try{ await api.send('POST','/api/catalog',{ name:w.name, unit:'m2', unit_price:w.val, cost_type:w.cost_type, category:'otro', notes:w.spec });
+    S.catalog=await api.get('/api/catalog'); toast('➕ "'+w.name+'" agregado al catálogo ✓'); }
+  catch(e){ toast(e.message,true); }
 }
 
 // ============================================================
