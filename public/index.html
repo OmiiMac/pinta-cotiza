@@ -726,6 +726,7 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
         <label class="f"><span>Nombre del plano</span><input id="pl_name" placeholder="Ej: Planta baja - Residencia"></label>
         <label class="f"><span>Cliente</span><select id="pl_client"></select></label>
         <label class="f"><span>Escala px/m (usa 📐 Calibrar si subes un plano)</span><input type="number" id="pl_scale" min="5" max="400" value="50" oninput="setScale(this.value)"></label>
+        <label class="f"><span>🏢 Pisos del edificio</span><input type="number" id="pl_floors" min="1" max="60" value="1" oninput="setFloors(this.value)"></label>
       </div>
     </div>
     <div class="plan-wrap">
@@ -1831,8 +1832,9 @@ function planCalcDefaults(){ const s=S.settings||{}; return {
   pgal:Number(s.precio_galon||25), rend:Number(s.default_yield||35), manos:Number(s.default_coats||2),
   waste:Number(s.desperdicio||12), umbral:Number(s.umbral_vano||1.5),
   tbase:Number(s.tarifa_base_m2||12), trec:Number(s.tarifa_recorte_ml||4.5), rejaM2:Number(s.reja_cost_m2||35) }; }
-function blankPlan(){ return { id:null,name:'',client_id:'',scale:50,rooms:[],bg:null,calc:planCalcDefaults(),repairs:[],repairKind:'grieta',furniture:[],furnKind:'sofa',stairs:[],rails:[],railKind:'barandal',
+function blankPlan(){ return { id:null,name:'',client_id:'',scale:50,floors:1,rooms:[],bg:null,calc:planCalcDefaults(),repairs:[],repairKind:'grieta',furniture:[],furnKind:'sofa',stairs:[],rails:[],railKind:'barandal',
   mode:'rect',current:[],sel:null,drag:null,pan:null,calib:[],hover:null,create:null,vb:{x:0,y:0,w:1200,h:1200/ASPECT} }; }
+function setFloors(v){ P.floors=Math.max(1,Math.min(60,Math.round(Number(v)||1))); renderCalcResult(); renderLiveCounters(); }
 function newPlan(){ P=blankPlan(); mountPlanEditor(); go('planeditor'); }
 async function openPlan(id){
   try{ const p=await api.get('/api/plans/'+id); P=blankPlan();
@@ -1845,6 +1847,7 @@ async function openPlan(id){
     P.furniture=(p.data&&Array.isArray(p.data.furniture))?p.data.furniture:[];
     P.stairs=(p.data&&Array.isArray(p.data.stairs))?p.data.stairs:[];
     P.rails=(p.data&&Array.isArray(p.data.rails))?p.data.rails:[];
+    P.floors=(p.data&&p.data.floors)?p.data.floors:1;
     mountPlanEditor(); go('planeditor');
   }catch(e){ toast(e.message,true); }
 }
@@ -1852,7 +1855,7 @@ async function delPlan(id){ if(!confirm('¿Eliminar este plano?'))return;
   try{ await api.send('DELETE','/api/plans/'+id); renderPlans(); toast('Plano eliminado'); }catch(e){ toast(e.message,true); } }
 
 function mountPlanEditor(){
-  $('pl_name').value=P.name; $('pl_scale').value=Math.round(P.scale); $('pl_client').innerHTML=clientOptions(P.client_id);
+  $('pl_name').value=P.name; $('pl_scale').value=Math.round(P.scale); $('pl_floors').value=P.floors||1; $('pl_client').innerHTML=clientOptions(P.client_id);
   const svg=$('planSvg');
   svg.onpointerdown=planDown; svg.onpointermove=planHover; svg.ondblclick=planDblClick; svg.onwheel=planWheel;
   $('bgbar').classList.toggle('show',!!P.bg);
@@ -1969,6 +1972,8 @@ function computeProject(){
   const c=pc(); const rows=P.rooms.map(r=>({ r, ...computeRoom(r) }));
   const t={bruta:0,neta:0,galones:0,perim:0,mano:0};
   rows.forEach(x=>{ t.bruta+=x.bruta; t.neta+=x.neta; t.galones+=x.galones; t.perim+=x.perimRecorte; t.mano+=x.mano; });
+  const floors=Math.max(1,Math.round(P.floors||1)); t.floors=floors;
+  if(floors>1){ t.bruta*=floors; t.neta*=floors; t.galones*=floors; t.mano*=floors; t.perim*=floors; }
   t.galonesUp=Math.ceil(t.galones-1e-9)||0;
   t.materiales=t.galonesUp*c.pgal;
   t.manoObra=t.mano;
@@ -2018,7 +2023,7 @@ function renderLiveCounters(){
   el.innerHTML=`
     <div class="lc"><span>Metros brutos</span><b>${t.bruta.toFixed(1)} m²</b></div>
     <div class="lc"><span>Vanos</span><b>${vanN} · ${vanA.toFixed(1)} m²</b></div>
-    <div class="lc"><span>Metros netos</span><b>${t.neta.toFixed(1)} m²</b></div>
+    <div class="lc"><span>Metros netos${t.floors>1?' ('+t.floors+' pisos)':''}</span><b>${t.neta.toFixed(1)} m²</b></div>
     <div class="lc hi"><span>Pintura</span><b>${t.galonesUp} gal</b></div>
     <div class="lc hi"><span>Presupuesto</span><b>${money(t.presupuesto)}</b></div>`;
 }
@@ -2050,16 +2055,19 @@ function shadeHex(hex,f){ const n=String(hex||'#cccccc').replace('#',''); let r=
   r=Math.min(255,Math.round(r*f));g=Math.min(255,Math.round(g*f));b=Math.min(255,Math.round(b*f)); return `rgb(${r},${g},${b})`; }
 function show3D(){
   if(!P.rooms.length){ toast('Dibuja al menos una sala',true); return; }
-  const faces=[];
+  const faces=[]; const floors=Math.max(1,Math.round(P.floors||1));
   P.rooms.forEach(room=>{ const h=(room.height||2.7)*P.scale; const base=room.paintColor||'#d8cdb5';
-    const fl=room.points.map(p=>iso3(p.x,p.y,0));
-    faces.push({ pts:fl, fill:'#8c8c90', stroke:'#555', depth:-1e12 });
-    for(let i=0;i<room.points.length;i++){ const a=room.points[i], b=room.points[(i+1)%room.points.length];
-      const a0=iso3(a.x,a.y,0), b0=iso3(b.x,b.y,0), b1=iso3(b.x,b.y,h), a1=iso3(a.x,a.y,h);
-      const horiz=Math.abs(b.x-a.x)>=Math.abs(b.y-a.y);
-      faces.push({ pts:[a0,b0,b1,a1], fill:shadeHex(base, horiz?0.85:0.6), stroke:'rgba(0,0,0,.28)', depth:(a.x+b.x+a.y+b.y)/2 });
+    for(let f=0; f<floors; f++){ const z0=f*h, z1=(f+1)*h;
+      // losa / piso de este nivel
+      const fl=room.points.map(p=>iso3(p.x,p.y,z0));
+      faces.push({ pts:fl, fill:f===0?'#8c8c90':'#9a9aa0', stroke:'#666', depth:-1e12+f });
+      for(let i=0;i<room.points.length;i++){ const a=room.points[i], b=room.points[(i+1)%room.points.length];
+        const a0=iso3(a.x,a.y,z0), b0=iso3(b.x,b.y,z0), b1=iso3(b.x,b.y,z1), a1=iso3(a.x,a.y,z1);
+        const horiz=Math.abs(b.x-a.x)>=Math.abs(b.y-a.y);
+        faces.push({ pts:[a0,b0,b1,a1], fill:shadeHex(base, horiz?0.85:0.6), stroke:'rgba(0,0,0,.28)', depth:(a.x+b.x+a.y+b.y)/2 + z1*0.001 });
+      }
     }
-    if(_roof3d){ const roof=room.points.map(p=>iso3(p.x,p.y,h)); faces.push({ pts:roof, fill:'#b9b2a4', stroke:'rgba(0,0,0,.3)', depth:1e12 }); }
+    if(_roof3d){ const roof=room.points.map(p=>iso3(p.x,p.y,floors*h)); faces.push({ pts:roof, fill:'#b9b2a4', stroke:'rgba(0,0,0,.3)', depth:1e12 }); }
   });
   faces.sort((p,q)=>p.depth-q.depth);
   let xs=[],ys=[]; faces.forEach(f=>f.pts.forEach(p=>{xs.push(p.X);ys.push(p.Y);}));
@@ -2481,7 +2489,7 @@ function renderRoomsPanel(){
 
 async function savePlan(){
   P.name=$('pl_name').value; P.client_id=$('pl_client').value; P.scale=Number($('pl_scale').value||50);
-  const body={ name:P.name, client_id:P.client_id, scale:P.scale, area_total:totalFloor(), data:{rooms:P.rooms,bg:P.bg,calc:P.calc,repairs:P.repairs,furniture:P.furniture,stairs:P.stairs,rails:P.rails} };
+  const body={ name:P.name, client_id:P.client_id, scale:P.scale, area_total:totalFloor(), data:{rooms:P.rooms,bg:P.bg,calc:P.calc,repairs:P.repairs,furniture:P.furniture,stairs:P.stairs,rails:P.rails,floors:P.floors} };
   if(JSON.stringify(body).length>4600000){ toast('La imagen de fondo es muy pesada; usa una más liviana',true); return; }
   try{ const saved=P.id?await api.send('PUT','/api/plans/'+P.id,body):await api.send('POST','/api/plans',body); P.id=saved.id; toast('Plano guardado ✓'); }
   catch(e){ toast(e.message,true); }
@@ -2503,17 +2511,18 @@ function printPlan(){
   const s=P.scale; let pts=[]; P.rooms.forEach(r=>pts.push(...r.points)); if(P.bg) pts.push({x:0,y:0},{x:P.bg.w,y:P.bg.h});
   const pad=Math.max(s,30), minx=Math.min(...pts.map(p=>p.x))-pad, miny=Math.min(...pts.map(p=>p.y))-pad;
   const w=Math.max(...pts.map(p=>p.x))+pad-minx, h=Math.max(...pts.map(p=>p.y))+pad-miny;
+  const K=Math.max(w,h)/700;   // escala textos/líneas al tamaño del plano (evita que queden invisibles)
   let body='';
   if(P.bg) body+=`<image href="${P.bg.src}" x="0" y="0" width="${P.bg.w}" height="${P.bg.h}" opacity="0.25" preserveAspectRatio="none"/>`;
   P.rooms.forEach(r=>{
-    body+=`<polygon points="${r.points.map(p=>`${p.x},${p.y}`).join(' ')}" fill="rgba(123,47,247,.08)" stroke="#7b2ff7" stroke-width="2"/>`;
+    body+=`<polygon points="${r.points.map(p=>`${p.x},${p.y}`).join(' ')}" fill="rgba(123,47,247,.08)" stroke="#7b2ff7" stroke-width="${2*K}"/>`;
     for(let i=0;i<r.points.length;i++){ const a=r.points[i],b=r.points[(i+1)%r.points.length];
-      body+=`<text x="${(a.x+b.x)/2}" y="${(a.y+b.y)/2-4}" text-anchor="middle" font-size="12" fill="#111" paint-order="stroke" stroke="#fff" stroke-width="3">${(dist(a,b)/s).toFixed(2)} m</text>`; }
+      body+=`<text x="${(a.x+b.x)/2}" y="${(a.y+b.y)/2-4*K}" text-anchor="middle" font-size="${12*K}" fill="#111" paint-order="stroke" stroke="#fff" stroke-width="${3*K}">${(dist(a,b)/s).toFixed(2)} m</text>`; }
     (r.openings||[]).forEach(o=>{ const a=r.points[o.edge],b=r.points[(o.edge+1)%r.points.length]; if(!a||!b)return; const ang=Math.atan2(b.y-a.y,b.x-a.x),half=(o.w*s)/2,cx=a.x+(b.x-a.x)*o.pos,cy=a.y+(b.y-a.y)*o.pos;
-      body+=`<line x1="${cx-Math.cos(ang)*half}" y1="${cy-Math.sin(ang)*half}" x2="${cx+Math.cos(ang)*half}" y2="${cy+Math.sin(ang)*half}" stroke="${o.kind==='door'?'#e08a00':'#0a84c8'}" stroke-width="4"/>`; });
+      body+=`<line x1="${cx-Math.cos(ang)*half}" y1="${cy-Math.sin(ang)*half}" x2="${cx+Math.cos(ang)*half}" y2="${cy+Math.sin(ang)*half}" stroke="${o.kind==='door'?'#e08a00':'#0a84c8'}" stroke-width="${4*K}"/>`; });
     const cx=r.points.reduce((t,p)=>t+p.x,0)/r.points.length, cy=r.points.reduce((t,p)=>t+p.y,0)/r.points.length;
-    body+=`<text x="${cx}" y="${cy-2}" text-anchor="middle" font-size="13" font-weight="700" fill="#111" paint-order="stroke" stroke="#fff" stroke-width="3">${esc(r.name)}</text>`;
-    body+=`<text x="${cx}" y="${cy+15}" text-anchor="middle" font-size="11" fill="#7b2ff7" paint-order="stroke" stroke="#fff" stroke-width="3">${floorArea(r).toFixed(2)} m²</text>`;
+    body+=`<text x="${cx}" y="${cy-2*K}" text-anchor="middle" font-size="${13*K}" font-weight="700" fill="#111" paint-order="stroke" stroke="#fff" stroke-width="${3*K}">${esc(r.name)}</text>`;
+    body+=`<text x="${cx}" y="${cy+15*K}" text-anchor="middle" font-size="${11*K}" fill="#7b2ff7" paint-order="stroke" stroke="#fff" stroke-width="${3*K}">${floorArea(r).toFixed(2)} m²</text>`;
   });
   const cl=S.clients.find(x=>x.id===$('pl_client').value);
   const rows=P.rooms.map(r=>`<tr><td style="padding:6px 10px;border-bottom:1px solid #eee">${esc(r.name)}</td><td style="padding:6px 10px;border-bottom:1px solid #eee;text-align:right">${floorArea(r).toFixed(2)}</td><td style="padding:6px 10px;border-bottom:1px solid #eee;text-align:right">${wallArea(r).toFixed(2)}</td></tr>`).join('');
