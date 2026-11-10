@@ -147,7 +147,13 @@ const DEFAULT_META = {
   default_terms:   'Precios en USD. Validez de la oferta segun fecha indicada. 50% de adelanto para iniciar, 50% contra entrega. No incluye trabajos no especificados en esta cotizacion.',
   default_coats:   '2',
   default_yield:   '35',          // rendimiento m2 por galon (referencia)
-  default_margin:  '35'           // ganancia % por defecto (competitivo Panama)
+  default_margin:  '35',          // ganancia % por defecto (competitivo Panama)
+  // --- Motor de calculo inteligente (defaults) ---
+  precio_galon:    '25',          // costo por galon de pintura
+  desperdicio:     '12',          // % de desperdicio de material
+  umbral_vano:     '1.5',         // m2: vanos <= no descuentan material
+  tarifa_base_m2:  '12',          // mano de obra por m2 (rodillo)
+  tarifa_recorte_ml:'4.5'         // mano de obra por metro lineal de recorte/perfilado
 };
 function metaGet(key) {
   const r = db.prepare('SELECT value FROM meta WHERE key=?').get(key);

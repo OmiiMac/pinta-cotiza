@@ -402,6 +402,18 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
 .plan-total{font-family:'Orbitron',sans-serif;font-size:17px}
 @media(max-width:900px){.plan-wrap{grid-template-columns:1fr}}
 
+/* ---------- Motor de cálculo (planos) ---------- */
+.cp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px}
+.cp-grid label{display:block;font-size:11px;color:var(--muted)}
+.cp-grid input{width:100%;margin-top:4px;padding:8px 9px;font-size:13px}
+.calc-tbl th,.calc-tbl td{padding:8px 10px;font-size:12.5px}
+.calc-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:14px}
+.cc{background:var(--panel2);border:1px solid var(--border);border-radius:11px;padding:11px 13px}
+.cc span{display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.cc b{display:block;margin-top:5px;font-size:17px;font-weight:800}
+.cc.total{border-color:var(--border2);background:linear-gradient(135deg,rgba(212,175,55,.14),var(--panel2))}
+.cc.total b{color:var(--cyan2);font-size:20px}
+
 /* ---------- Print ---------- */
 .print-only{display:none}
 @media print{
@@ -732,6 +744,17 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
           <div id="roomsPanel"></div>
         </div>
       </div>
+    </div>
+
+    <!-- Motor de cálculo inteligente -->
+    <div class="panel" id="calcPanel" style="margin-top:16px">
+      <div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:6px">
+        <h3 class="ttl">🧮 Presupuesto inteligente</h3>
+        <span class="hint" style="margin:0">Vanos ≤ umbral no descuentan material pero suman recorte · desperdicio y complejidad incluidos</span>
+        <button class="btn green sm" style="margin-left:auto" onclick="projectToQuote()">➕ Cotizar este presupuesto</button>
+      </div>
+      <div class="calc-params" id="calcParams"></div>
+      <div id="calcResult" style="margin-top:14px"></div>
     </div>
   </section>
 
@@ -1514,15 +1537,20 @@ async function renderPlans(){
     </tr>`).join('')}</tbody></table></div>` : emptyBox('Sin planos','Crea tu primer croquis con medidas.');
 }
 const ASPECT=1200/760; let _raf=null;
-function blankPlan(){ return { id:null,name:'',client_id:'',scale:50,rooms:[],bg:null,
+function planCalcDefaults(){ const s=S.settings||{}; return {
+  pgal:Number(s.precio_galon||25), rend:Number(s.default_yield||35), manos:Number(s.default_coats||2),
+  waste:Number(s.desperdicio||12), umbral:Number(s.umbral_vano||1.5),
+  tbase:Number(s.tarifa_base_m2||12), trec:Number(s.tarifa_recorte_ml||4.5) }; }
+function blankPlan(){ return { id:null,name:'',client_id:'',scale:50,rooms:[],bg:null,calc:planCalcDefaults(),
   mode:'draw',current:[],sel:null,drag:null,pan:null,calib:[],hover:null,vb:{x:0,y:0,w:1200,h:1200/ASPECT} }; }
 function newPlan(){ P=blankPlan(); mountPlanEditor(); go('planeditor'); }
 async function openPlan(id){
   try{ const p=await api.get('/api/plans/'+id); P=blankPlan();
     P.id=p.id; P.name=p.name||''; P.client_id=p.client_id||''; P.scale=p.scale||50; P.mode='select';
     P.rooms=(p.data&&Array.isArray(p.data.rooms))?p.data.rooms:[];
-    P.rooms.forEach(r=>{ r.height=r.height||2.7; r.openings=r.openings||[]; });
+    P.rooms.forEach(r=>{ r.height=r.height||2.7; r.openings=r.openings||[]; r.estado=r.estado||'lisa'; });
     P.bg=(p.data&&p.data.bg)?p.data.bg:null;
+    P.calc=(p.data&&p.data.calc)?Object.assign(planCalcDefaults(),p.data.calc):planCalcDefaults();
     mountPlanEditor(); go('planeditor');
   }catch(e){ toast(e.message,true); }
 }
@@ -1535,6 +1563,7 @@ function mountPlanEditor(){
   svg.onpointerdown=planDown; svg.onpointermove=planHover; svg.ondblclick=planDblClick; svg.onwheel=planWheel;
   $('bgbar').classList.toggle('show',!!P.bg);
   if(P.bg) $('bg_op').value=Math.round((P.bg.opacity??0.6)*100);
+  renderCalcParams();
   setMode(P.mode);
   if(P.rooms.length||P.bg) fitView(); else { applyVB(); draw(); }
 }
@@ -1572,6 +1601,70 @@ function openingsAreaM(r){ return (r.openings||[]).reduce((s,o)=>s+(+o.w||0)*(+o
 function wallArea(r){ return Math.max(0, perimeterM(r)*(+r.height||2.7) - openingsAreaM(r)); }
 function totalFloor(){ return P.rooms.reduce((s,r)=>s+floorArea(r),0); }
 function totalWall(){ return P.rooms.reduce((s,r)=>s+wallArea(r),0); }
+
+// ===== MOTOR DE CÁLCULO INTELIGENTE (vanos, recorte, desperdicio, complejidad) =====
+const ESTADO_FC={lisa:1.0, humedad:1.25, gotele:1.4};
+const ESTADO_LBL={lisa:'Lisa / buen estado', humedad:'Grietas / humedad leve', gotele:'Textura pesada / gotelé'};
+function pc(){ const c=P.calc||planCalcDefaults(); return c; }
+function roomFc(r){ const est=ESTADO_FC[r.estado||'lisa']||1; const alt=(+r.height||2.7)>=3?1.35:1; return est*alt; }
+function computeRoom(r){
+  const c=pc(), h=(+r.height||2.7);
+  let bruta=0; for(let i=0;i<r.points.length;i++) bruta += (dist(r.points[i],r.points[(i+1)%r.points.length])/P.scale)*h;
+  let descMat=0, perimRecorte=0;
+  (r.openings||[]).forEach(o=>{ const a=(+o.w||0)*(+o.h||0); const per=2*((+o.w||0)+(+o.h||0));
+    perimRecorte+=per; if(a>c.umbral) descMat+=a; });
+  const neta=Math.max(0, bruta-descMat);
+  const galones=neta>0 ? (neta*c.manos/(c.rend||35))*(1+(c.waste||0)/100) : 0;
+  const fc=roomFc(r);
+  const mano=(neta*c.tbase*fc)+(perimRecorte*c.trec);
+  return { bruta, descMat, neta, perimRecorte, galones, fc, mano };
+}
+function computeProject(){
+  const c=pc(); const rows=P.rooms.map(r=>({ r, ...computeRoom(r) }));
+  const t={bruta:0,neta:0,galones:0,perim:0,mano:0};
+  rows.forEach(x=>{ t.bruta+=x.bruta; t.neta+=x.neta; t.galones+=x.galones; t.perim+=x.perimRecorte; t.mano+=x.mano; });
+  t.galonesUp=Math.ceil(t.galones-1e-9)||0;
+  t.materiales=t.galonesUp*c.pgal;
+  t.manoObra=t.mano;
+  t.presupuesto=t.materiales+t.manoObra; // costo (antes de ganancia)
+  return { c, rows, t };
+}
+function setCalc(k,v){ if(!P.calc) P.calc=planCalcDefaults(); P.calc[k]=Number(v)||0; renderCalcResult(); }
+function renderCalcParams(){
+  const c=pc(), el=$('calcParams'); if(!el) return;
+  const F=[['pgal','Precio galón','0.01'],['rend','Rend. m²/gal','1'],['manos','Manos','1'],['waste','Desperdicio %','1'],['umbral','Umbral vano m²','0.1'],['tbase','M.O. base $/m²','0.5'],['trec','M.O. recorte $/ml','0.5']];
+  el.innerHTML='<div class="cp-grid">'+F.map(([k,lbl,st])=>`<label>${lbl}<input type="number" step="${st}" value="${c[k]}" oninput="setCalc('${k}',this.value)"></label>`).join('')+'</div>';
+}
+function renderCalcResult(){
+  const el=$('calcResult'); if(!el) return;
+  if(!P.rooms.length){ el.innerHTML='<div class="hint" style="margin:0">Dibuja al menos una sala para calcular el presupuesto.</div>'; return; }
+  const {c,rows,t}=computeProject();
+  el.innerHTML=`<div class="tscroll"><table class="tbl calc-tbl"><thead><tr>
+      <th>Sala</th><th>Estado</th><th class="num">Bruta</th><th class="num">Neta</th><th class="num">Recorte</th><th class="num">Galones</th><th class="num">M. obra</th></tr></thead><tbody>
+      ${rows.map(x=>`<tr><td>${esc(x.r.name)}</td><td>${ESTADO_LBL[x.r.estado||'lisa']}${x.fc!==1?` <span class="tag">×${x.fc.toFixed(2)}</span>`:''}</td>
+        <td class="num">${x.bruta.toFixed(2)}</td><td class="num">${x.neta.toFixed(2)}</td>
+        <td class="num">${x.perimRecorte.toFixed(1)} ml</td><td class="num">${x.galones.toFixed(2)}</td><td class="num mono">${money(x.mano)}</td></tr>`).join('')}
+      </tbody></table></div>
+    <div class="calc-cards">
+      <div class="cc"><span>Área neta a pintar</span><b>${t.neta.toFixed(2)} m²</b></div>
+      <div class="cc"><span>Pintura (+${c.waste}% desperdicio)</span><b>${t.galonesUp} gal</b></div>
+      <div class="cc"><span>Materiales</span><b>${money(t.materiales)}</b></div>
+      <div class="cc"><span>Mano de obra</span><b>${money(t.manoObra)}</b></div>
+      <div class="cc total"><span>Presupuesto (costo)</span><b>${money(t.presupuesto)}</b></div>
+    </div>`;
+}
+function setRoomEstado(ri,v){ P.rooms[ri].estado=v; renderCalcResult(); drawSvg(); }
+function projectToQuote(){
+  if(!P.rooms.length){ toast('Dibuja al menos una sala',true); return; }
+  const {c,rows,t}=computeProject();
+  const q=blankQuote(false);
+  q.client_id=$('pl_client').value||''; q.title=$('pl_name').value||'Proyecto de pintura';
+  const items=[];
+  if(t.galonesUp>0) items.push({ id:null, category:'pintura-interior', cost_type:'materiales', description:`Pintura — ${t.galonesUp} galón${t.galonesUp===1?'':'es'} (inc. ${c.waste}% desperdicio)`, unit:'gal', is_area:0, width:0,height:0,qcount:1,deduction:0, qty:t.galonesUp, unit_price:c.pgal, coats:c.manos, paint_yield:c.rend });
+  rows.forEach(x=>{ if(x.mano>0) items.push({ id:null, category:'pintura-interior', cost_type:'mano-obra', description:`Mano de obra — ${x.r.name} (${x.neta.toFixed(1)} m² netos)`, unit:'global', is_area:0, width:0,height:0,qcount:1,deduction:0, qty:1, unit_price:Math.round(x.mano*100)/100, coats:c.manos, paint_yield:c.rend }); });
+  q.items=items.length?items:[blankItem()];
+  S.editing=q; fillEditor(); go('editor'); toast('Presupuesto cargado en una cotización ✓');
+}
 
 /* ---- interacción puntero ---- */
 function bindDrag(){ window.addEventListener('pointermove',planDrag); window.addEventListener('pointerup',planUp); }
@@ -1623,7 +1716,7 @@ function undoPoint(){ if(P.current.length){ P.current.pop(); draw(); } }
 function closeRoom(){
   if(P.current.length<3){ toast('Marca al menos 3 esquinas',true); return; }
   const color=ROOM_COLORS[P.rooms.length%ROOM_COLORS.length];
-  P.rooms.push({ id:'r'+Math.random().toString(36).slice(2,8), name:'Sala '+(P.rooms.length+1), color, points:P.current.slice(), height:2.7, openings:[] });
+  P.rooms.push({ id:'r'+Math.random().toString(36).slice(2,8), name:'Sala '+(P.rooms.length+1), color, points:P.current.slice(), height:2.7, openings:[], estado:'lisa' });
   P.current=[]; P.sel=P.rooms.length-1; draw();
 }
 function rectRoom(){
@@ -1641,7 +1734,7 @@ function createRect(){
   const cx=P.vb.x+P.vb.w/2, cy=P.vb.y+P.vb.h/2, pw=w*P.scale, ph=h*P.scale;
   const pts=[{x:cx-pw/2,y:cy-ph/2},{x:cx+pw/2,y:cy-ph/2},{x:cx+pw/2,y:cy+ph/2},{x:cx-pw/2,y:cy+ph/2}];
   const color=ROOM_COLORS[P.rooms.length%ROOM_COLORS.length];
-  P.rooms.push({ id:'r'+Math.random().toString(36).slice(2,8), name:'Sala '+(P.rooms.length+1), color, points:pts, height:2.7, openings:[] });
+  P.rooms.push({ id:'r'+Math.random().toString(36).slice(2,8), name:'Sala '+(P.rooms.length+1), color, points:pts, height:2.7, openings:[], estado:'lisa' });
   P.sel=P.rooms.length-1; closeModal(); setMode('select'); draw();
 }
 function addOpening(evt,kind){
@@ -1717,7 +1810,8 @@ function planKey(e){
 
 /* ---- render ---- */
 function scheduleDraw(){ if(_raf) return; _raf=requestAnimationFrame(()=>{ _raf=null; drawSvg(); updateTotals(); }); }
-function draw(){ drawSvg(); drawPanelSafe(); updateTotals(); }
+function draw(){ drawSvg(); drawPanelSafe(); updateTotals(); if(!_calcFocused()) renderCalcResult(); }
+function _calcFocused(){ const ae=document.activeElement; return ae && $('calcParams') && $('calcParams').contains(ae); }
 function updateTotals(){ if($('planTotal')) $('planTotal').innerHTML=`<span style="color:var(--cyan2)">${totalFloor().toFixed(1)}</span> / <span style="color:var(--green)">${totalWall().toFixed(1)}</span> m²`; }
 function drawPanelSafe(){ const ae=document.activeElement; if(ae && $('roomsPanel').contains(ae)) return; renderRoomsPanel(); }
 function drawSvg(){
@@ -1779,6 +1873,7 @@ function renderRoomsPanel(){
         <div class="pd">pared<b>${wallArea(r).toFixed(2)} m²</b></div>
       </div>
       <div class="ht">Altura <input type="number" step="0.05" value="${r.height||2.7}" oninput="setRoomHeight(${ri},this.value)"> m</div>
+      <div class="ht">Estado <select onchange="setRoomEstado(${ri},this.value)" style="flex:1">${Object.keys(ESTADO_LBL).map(k=>`<option value="${k}" ${(r.estado||'lisa')===k?'selected':''}>${ESTADO_LBL[k]}</option>`).join('')}</select></div>
       ${(r.openings||[]).map((o,oi)=>`<div class="ops">${o.kind==='door'?'🚪':'🪟'}
         <input type="number" step="0.05" value="${o.w}" oninput="setOpening(${ri},${oi},'w',this.value)">×<input type="number" step="0.05" value="${o.h}" oninput="setOpening(${ri},${oi},'h',this.value)"> m
         <button class="btn sm danger icon" onclick="delOpening(${ri},${oi})">✕</button></div>`).join('')}
@@ -1787,7 +1882,7 @@ function renderRoomsPanel(){
 
 async function savePlan(){
   P.name=$('pl_name').value; P.client_id=$('pl_client').value; P.scale=Number($('pl_scale').value||50);
-  const body={ name:P.name, client_id:P.client_id, scale:P.scale, area_total:totalFloor(), data:{rooms:P.rooms,bg:P.bg} };
+  const body={ name:P.name, client_id:P.client_id, scale:P.scale, area_total:totalFloor(), data:{rooms:P.rooms,bg:P.bg,calc:P.calc} };
   if(JSON.stringify(body).length>4600000){ toast('La imagen de fondo es muy pesada; usa una más liviana',true); return; }
   try{ const saved=P.id?await api.send('PUT','/api/plans/'+P.id,body):await api.send('POST','/api/plans',body); P.id=saved.id; toast('Plano guardado ✓'); }
   catch(e){ toast(e.message,true); }
