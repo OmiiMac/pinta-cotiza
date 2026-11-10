@@ -1287,6 +1287,7 @@ function printWorkOrder(){
   </div>`;
   window.print();
 }
+function renderBreakdown(){
   const g={}; let tot=0;
   S.editing.items.forEach(it=>{ const lt=lineTotal(it); if(lt<=0) return; const k=it.cost_type||'otro'; g[k]=(g[k]||0)+lt; tot+=lt; });
   const keys=Object.keys(g).sort((a,b)=>g[b]-g[a]);
