@@ -716,6 +716,7 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
       <button class="btn ghost sm" onclick="go('plans')">← Volver</button>
       <h1>Editor de plano</h1>
       <div class="spacer"></div>
+      <button class="btn sm" onclick="showFront()">🏠 Vista de frente</button>
       <button class="btn sm" onclick="show3D()">🧊 Ver en 3D</button>
       <button class="btn sm" onclick="printPlan()">🖨 Imprimir</button>
       <button class="btn" onclick="planToQuote()">➕ Cotizar áreas</button>
@@ -909,6 +910,15 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
     <img id="lightboxImg" alt="">
     <div class="lb-cap" id="lightboxCap"></div>
     <button class="btn green" id="lightboxAdd" style="margin-top:12px">➕ Agregar a cotización</button>
+  </div>
+</div>
+
+<!-- Vista de frente (fachada) -->
+<div class="lightbox" id="frontView" onclick="closeFront()">
+  <div class="lb-inner" onclick="event.stopPropagation()" style="max-width:920px">
+    <button class="lb-close" onclick="closeFront()">✕</button>
+    <div id="frontBox"></div>
+    <div class="lb-cap">Vista de frente (fachada) · ventanas, puertas, pisos y escaleras</div>
   </div>
 </div>
 
@@ -2078,6 +2088,37 @@ function show3D(){
   $('view3d').classList.add('show');
 }
 function close3D(){ $('view3d').classList.remove('show'); }
+function closeFront(){ $('frontView').classList.remove('show'); }
+// ---- Vista de frente (fachada / alzado) ----
+function showFront(){
+  if(!P.rooms.length){ toast('Dibuja al menos una sala',true); return; }
+  const s=P.scale, floors=Math.max(1,Math.round(P.floors||1));
+  let pts=[]; P.rooms.forEach(r=>pts.push(...r.points));
+  const minx=Math.min(...pts.map(p=>p.x)), maxx=Math.max(...pts.map(p=>p.x));
+  const W=Math.max(1,maxx-minx), fh=(P.rooms[0].height||2.7)*s, H=floors*fh;
+  const K=Math.max(W,H)/700, pad=Math.max(W,H)*0.07+10*K;
+  let body=`<rect x="0" y="0" width="${W}" height="${H}" fill="#efe8d6" stroke="#333" stroke-width="${2.2*K}"/>`;
+  for(let f=1;f<floors;f++){ const y=H-f*fh; body+=`<line x1="0" y1="${y}" x2="${W}" y2="${y}" stroke="#666" stroke-width="${1.8*K}"/>`; }
+  for(let f=0;f<floors;f++){ body+=`<text x="${6*K}" y="${H-f*fh-6*K}" font-size="${12*K}" fill="#888">Piso ${f+1}</text>`; }
+  P.rooms.forEach(r=>(r.openings||[]).forEach(o=>{ const a=r.points[o.edge], b=r.points[(o.edge+1)%r.points.length]; if(!a||!b) return;
+    const cx=(a.x+(b.x-a.x)*o.pos)-minx, ow=(o.w||1)*s, oh=(o.h||1)*s, x=cx-ow/2;
+    for(let f=0;f<floors;f++){ const base=H-f*fh;
+      if(o.kind==='door'){ const y=base-oh; body+=`<rect x="${x}" y="${y}" width="${ow}" height="${oh}" fill="#caa06a" stroke="#6b4e22" stroke-width="${1.4*K}"/><circle cx="${x+ow*0.84}" cy="${y+oh/2}" r="${2*K}" fill="#333"/>`; }
+      else { const sill=0.95*s, y=base-sill-oh; body+=`<rect x="${x}" y="${y}" width="${ow}" height="${oh}" fill="#bcd7ee" stroke="#2a4a66" stroke-width="${1.4*K}"/>`+
+        `<line x1="${x+ow/2}" y1="${y}" x2="${x+ow/2}" y2="${y+oh}" stroke="#2a4a66" stroke-width="${1*K}"/><line x1="${x}" y1="${y+oh/2}" x2="${x+ow}" y2="${y+oh/2}" stroke="#2a4a66" stroke-width="${1*K}"/>`;
+        if(o.reja){ const bars=Math.max(3,Math.round((o.w||1)/0.12)); for(let i=1;i<bars;i++){ const bx=x+ow*i/bars; body+=`<line x1="${bx}" y1="${y}" x2="${bx}" y2="${y+oh}" stroke="#c33" stroke-width="${0.9*K}"/>`; } }
+      }
+    }
+  }));
+  if((P.stairs||[]).length && floors>1){ const sx=W*0.06, sw=Math.min(W*0.2, fh*0.9);
+    for(let f=0;f<floors-1;f++){ const base=H-f*fh, top=H-(f+1)*fh, n=6;
+      for(let i=0;i<n;i++){ const t0=i/n, t1=(i+1)/n, x0=sx+sw*t0, x1=sx+sw*t1, y0=base-(base-top)*t0, y1=base-(base-top)*t1;
+        body+=`<line x1="${x0}" y1="${y0}" x2="${x1}" y2="${y0}" stroke="#999" stroke-width="${1.6*K}"/><line x1="${x1}" y1="${y0}" x2="${x1}" y2="${y1}" stroke="#999" stroke-width="${1.6*K}"/>`; } }
+  }
+  body+=`<line x1="${-pad}" y1="${H}" x2="${W+pad}" y2="${H}" stroke="#444" stroke-width="${3*K}"/>`;
+  $('frontBox').innerHTML=`<svg viewBox="${-pad} ${-pad} ${W+pad*2} ${H+pad*2}" style="width:100%;height:auto;max-height:72vh;background:#eef3f8;border-radius:12px;border:1px solid var(--border2)">${body}</svg>`;
+  $('frontView').classList.add('show');
+}
 
 /* ---- interacción puntero ---- */
 function bindDrag(){ window.addEventListener('pointermove',planDrag); window.addEventListener('pointerup',planUp); }
