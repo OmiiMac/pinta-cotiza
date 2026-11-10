@@ -805,11 +805,22 @@ async function boot(){
     renderDash();
   }catch(e){ toast(e.message,true); }
 }
-// Usa el logo real (si se subió en Ajustes) en el header; si no, deja el ícono por defecto
+// Ícono por defecto (caja isométrica) por si no hay logo o el logo falla
+const BRAND_SVG=`<svg width="30" height="30" viewBox="0 0 48 48" fill="none">
+  <path d="M24 5 L41 14.5 L24 24 L7 14.5 Z" fill="#c23be8"/>
+  <path d="M7 14.5 L24 24 L24 43 L7 33.5 Z" fill="#6f29e6"/>
+  <path d="M41 14.5 L24 24 L24 43 L41 33.5 Z" fill="#9a2ff0"/>
+  <path d="M15 10.4 L24 15.4 L19.5 17.9 L10.5 12.9 Z" fill="#e7b4ff" opacity=".85"/>
+  <path class="arrow" d="M29 31 h6.4 M35.4 31 l-2.8 -2.6 M35.4 31 l-2.8 2.6" stroke="#19f7a4" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+</svg>`;
+function brandLogoFallback(){ const el=$('brandLogo'); if(el){ el.innerHTML=BRAND_SVG; el.style.border=''; } }
+// Usa el logo real SOLO si es una imagen válida (data:, http(s):// o /ruta); si no o si falla, muestra el ícono
 function applyBranding(){
   const el=$('brandLogo'); if(!el) return;
-  const logo=S.settings&&S.settings.company_logo;
-  if(logo){ el.innerHTML=`<img src="${esc(logo)}" alt="logo">`; el.style.border='none'; }
+  const logo=((S.settings&&S.settings.company_logo)||'').trim();
+  const valido=/^(data:image\/|https?:\/\/|\/)/i.test(logo);
+  if(logo && valido){ el.innerHTML=`<img src="${esc(logo)}" alt="logo" onerror="brandLogoFallback()">`; el.style.border='none'; }
+  else brandLogoFallback();
 }
 
 // ============================================================
