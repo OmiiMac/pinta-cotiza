@@ -414,6 +414,15 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
 .cc.total{border-color:var(--border2);background:linear-gradient(135deg,rgba(212,175,55,.14),var(--panel2))}
 .cc.total b{color:var(--cyan2);font-size:20px}
 
+/* ---------- Barra de contadores en vivo ---------- */
+.live-counters{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.live-counters:empty{display:none}
+.lc{flex:1 1 auto;min-width:110px;background:var(--panel2);border:1px solid var(--border);border-radius:11px;padding:9px 13px}
+.lc span{display:block;font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.lc b{display:block;margin-top:3px;font-size:16px;font-weight:800;font-variant-numeric:tabular-nums}
+.lc.hi{border-color:var(--border2);background:linear-gradient(135deg,rgba(212,175,55,.14),var(--panel2))}
+.lc.hi b{color:var(--cyan2)}
+
 /* ---------- Niveles ---------- */
 .niv-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:12px}
 .niv{position:relative;border:1px solid var(--border);border-radius:14px;padding:16px 14px;background:var(--panel2);text-align:center}
@@ -753,6 +762,7 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
             <button onclick="fitView()" title="Ajustar a pantalla" style="font-size:14px">⤢</button>
           </div>
         </div>
+        <div class="live-counters" id="liveCounters"></div>
         <div class="bgbar" id="bgbar">
           <span>🖼️ Plano de fondo:</span>
           <label>Opacidad <input type="range" id="bg_op" min="10" max="100" value="60" oninput="setBgOpacity(this.value)"></label>
@@ -1796,6 +1806,18 @@ function renderCalcResult(){
       <div class="cc total"><span>Presupuesto (costo)</span><b>${money(t.presupuesto)}</b></div>
     </div>`;
 }
+function renderLiveCounters(){
+  const el=$('liveCounters'); if(!el) return;
+  if(!P.rooms.length){ el.innerHTML=''; return; }
+  const {t}=computeProject();
+  let vanN=0, vanA=0; P.rooms.forEach(r=>(r.openings||[]).forEach(o=>{ vanN++; vanA+=(+o.w||0)*(+o.h||0); }));
+  el.innerHTML=`
+    <div class="lc"><span>Metros brutos</span><b>${t.bruta.toFixed(1)} m²</b></div>
+    <div class="lc"><span>Vanos</span><b>${vanN} · ${vanA.toFixed(1)} m²</b></div>
+    <div class="lc"><span>Metros netos</span><b>${t.neta.toFixed(1)} m²</b></div>
+    <div class="lc hi"><span>Pintura</span><b>${t.galonesUp} gal</b></div>
+    <div class="lc hi"><span>Presupuesto</span><b>${money(t.presupuesto)}</b></div>`;
+}
 function setRoomEstado(ri,v){ P.rooms[ri].estado=v; renderCalcResult(); drawSvg(); }
 function projectToQuote(){
   if(!P.rooms.length){ toast('Dibuja al menos una sala',true); return; }
@@ -2004,7 +2026,7 @@ function planKey(e){
 
 /* ---- render ---- */
 function scheduleDraw(){ if(_raf) return; _raf=requestAnimationFrame(()=>{ _raf=null; drawSvg(); updateTotals(); }); }
-function draw(){ drawSvg(); drawPanelSafe(); updateTotals(); if(!_calcFocused()) renderCalcResult(); }
+function draw(){ drawSvg(); drawPanelSafe(); updateTotals(); if(!_calcFocused()) renderCalcResult(); renderLiveCounters(); }
 function _calcFocused(){ const ae=document.activeElement; return ae && $('calcParams') && $('calcParams').contains(ae); }
 function updateTotals(){ if($('planTotal')) $('planTotal').innerHTML=`<span style="color:var(--cyan2)">${totalFloor().toFixed(1)}</span> / <span style="color:var(--green)">${totalWall().toFixed(1)}</span> m²`; }
 function drawPanelSafe(){ const ae=document.activeElement; if(ae && $('roomsPanel').contains(ae)) return; renderRoomsPanel(); }
