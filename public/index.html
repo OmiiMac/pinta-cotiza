@@ -800,18 +800,16 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
           <div style="font-size:11px;color:var(--muted2);margin-bottom:10px"><span style="color:var(--cyan2)">piso</span> / <span style="color:var(--green)">pared</span></div>
           <div id="roomsPanel"></div>
         </div>
+        <!-- Motor de cálculo inteligente — pegado al panel de salas -->
+        <div class="panel" id="calcPanel" style="margin-top:12px;padding:14px">
+          <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:6px">
+            <h3 class="ttl" style="font-size:13px;margin:0">🧮 Presupuesto</h3>
+            <button class="btn green sm" style="margin-left:auto" onclick="projectToQuote()">➕ Cotizar</button>
+          </div>
+          <div class="calc-params" id="calcParams"></div>
+          <div id="calcResult" style="margin-top:10px"></div>
+        </div>
       </div>
-    </div>
-
-    <!-- Motor de cálculo inteligente -->
-    <div class="panel" id="calcPanel" style="margin-top:16px">
-      <div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:6px">
-        <h3 class="ttl">🧮 Presupuesto inteligente</h3>
-        <span class="hint" style="margin:0">Vanos ≤ umbral no descuentan material pero suman recorte · desperdicio y complejidad incluidos</span>
-        <button class="btn green sm" style="margin-left:auto" onclick="projectToQuote()">➕ Cotizar este presupuesto</button>
-      </div>
-      <div class="calc-params" id="calcParams"></div>
-      <div id="calcResult" style="margin-top:14px"></div>
     </div>
   </section>
 
@@ -1848,7 +1846,7 @@ function planCalcDefaults(){ const s=S.settings||{}; return {
   pgal:Number(s.precio_galon||25), rend:Number(s.default_yield||35), manos:Number(s.default_coats||2),
   waste:Number(s.desperdicio||12), umbral:Number(s.umbral_vano||1.5),
   tbase:Number(s.tarifa_base_m2||12), trec:Number(s.tarifa_recorte_ml||4.5), rejaM2:Number(s.reja_cost_m2||35) }; }
-function blankPlan(){ return { id:null,name:'',client_id:'',scale:50,floors:1,floorActive:null,rooms:[],bg:null,calc:planCalcDefaults(),repairs:[],repairKind:'grieta',furniture:[],furnKind:'sofa',stairs:[],rails:[],railKind:'barandal',
+function blankPlan(){ return { id:null,name:'',client_id:'',scale:50,floors:1,floorActive:null,rooms:[],bg:null,calc:planCalcDefaults(),repairs:[],repairKind:'grieta',furniture:[],furnKind:'sofa',stairs:[],rails:[],railKind:'barandal',freeOpenings:[],
   mode:'rect',current:[],sel:null,drag:null,pan:null,calib:[],hover:null,create:null,vb:{x:0,y:0,w:1200,h:1200/ASPECT} }; }
 function setFloors(v){ P.floors=Math.max(1,Math.min(60,Math.round(Number(v)||1))); if(P.floorActive>P.floors) P.floorActive=null; renderFloorBar(); draw(); }
 function setFloorActive(f){ P.floorActive = (f==='all')?null:Number(f); renderFloorBar(); draw(); }
@@ -1875,6 +1873,7 @@ async function openPlan(id){
     P.furniture=(p.data&&Array.isArray(p.data.furniture))?p.data.furniture:[];
     P.stairs=(p.data&&Array.isArray(p.data.stairs))?p.data.stairs:[];
     P.rails=(p.data&&Array.isArray(p.data.rails))?p.data.rails:[];
+    P.freeOpenings=(p.data&&Array.isArray(p.data.freeOpenings))?p.data.freeOpenings:[];
     P.floors=(p.data&&p.data.floors)?p.data.floors:1;
     mountPlanEditor(); go('planeditor');
   }catch(e){ toast(e.message,true); }
@@ -2283,13 +2282,38 @@ function createRect(){
   P.sel=P.rooms.length-1; closeModal(); setMode('select'); draw();
 }
 function addOpening(evt,kind){
-  if(!P.rooms.length){ toast('Primero dibuja una sala',true); return; }
   const r=rawPt(evt); let best=null;
-  P.rooms.forEach((room,ri)=>{ for(let i=0;i<room.points.length;i++){ const a=room.points[i],b=room.points[(i+1)%room.points.length]; const pr=projSeg(r,a,b); const d=dist(r,pr.pt); if(!best||d<best.d) best={d,ri,ei:i,pos:pr.t}; } });
-  if(!best||best.d>P.scale*0.8){ toast('Acerca el clic a una pared',true); return; }
+  P.rooms.forEach((room,ri)=>{ for(let i=0;i<room.points.length;i++){ const a=room.points[i],b=room.points[(i+1)%room.points.length]; const pr=projSeg(r,a,b); const d=dist(r,pr.pt); if(!best||d<best.d) best={d,ri,ei:i,pos:pr.t,ang:Math.atan2(b.y-a.y,b.x-a.x)}; } });
   const def=kind==='door'?{w:0.9,h:2.1}:{w:1.2,h:1.1};
-  const room=P.rooms[best.ri]; room.openings=room.openings||[]; room.openings.push({edge:best.ei,pos:best.pos,w:def.w,h:def.h,kind,style:kind==='door'?'sencilla':'fija',reja:false,floor:P.floorActive==null?null:P.floorActive});
-  P.sel=best.ri; draw(); toast((kind==='door'?'🚪 Puerta':'🪟 Ventana')+' agregada'+(P.floorActive?(' (piso '+P.floorActive+')'):''));
+  const fl=P.floorActive==null?null:P.floorActive;
+  if(best&&best.d<=P.scale*0.8){
+    const room=P.rooms[best.ri]; room.openings=room.openings||[]; room.openings.push({edge:best.ei,pos:best.pos,w:def.w,h:def.h,kind,style:kind==='door'?'sencilla':'fija',reja:false,floor:fl});
+    P.sel=best.ri; draw(); toast((kind==='door'?'🚪 Puerta':'🪟 Ventana')+' en pared'+(fl?' piso '+fl:''));
+  } else {
+    const sp=snapTo(r);
+    P.freeOpenings=P.freeOpenings||[];
+    P.freeOpenings.push({id:rid(),x:sp.x,y:sp.y,angle:best?best.ang:0,w:def.w,h:def.h,kind,style:kind==='door'?'sencilla':'fija',reja:false,floor:fl});
+    draw(); toast((kind==='door'?'🚪 Puerta':'🪟 Ventana')+' libre'+(fl?' piso '+fl:''));
+  }
+}
+function delFreeOpening(i){ P.freeOpenings.splice(i,1); draw(); }
+function drawFreeOpening(o,k){ const s=P.scale, half=(o.w*s)/2, ang=o.angle||0;
+  const ux=Math.cos(ang),uy=Math.sin(ang),nx=-Math.sin(ang),ny=Math.cos(ang);
+  const x1=o.x-ux*half,y1=o.y-uy*half,x2=o.x+ux*half,y2=o.y+uy*half;
+  const F=(px,py)=>`${px.toFixed(1)} ${py.toFixed(1)}`;
+  const style=o.style||(o.kind==='window'?'fija':'sencilla'); let sv='';
+  if(o.kind==='window'){
+    const t=3.4*k;
+    sv+=`<line class="open-win" x1="${x1-nx*t}" y1="${y1-ny*t}" x2="${x2-nx*t}" y2="${y2-ny*t}" style="stroke-width:${1.5*k}"/>`;
+    sv+=`<line class="open-win" x1="${x1+nx*t}" y1="${y1+ny*t}" x2="${x2+nx*t}" y2="${y2+ny*t}" style="stroke-width:${1.5*k}"/>`;
+    sv+=`<line class="open-win" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" style="stroke-width:${1.3*k};opacity:.65"/>`;
+    if(o.reja){ const bars=Math.max(3,Math.round((o.w||1)/0.12));
+      for(let i=1;i<bars;i++){ const tt=i/bars,px=x1+ux*(o.w*s)*tt,py=y1+uy*(o.w*s)*tt; sv+=`<line x1="${(px-nx*t).toFixed(1)}" y1="${(py-ny*t).toFixed(1)}" x2="${(px+nx*t).toFixed(1)}" y2="${(py+ny*t).toFixed(1)}" stroke="#e0637a" style="stroke-width:${1.1*k}"/>`; } }
+  } else {
+    sv+=`<line class="open-door" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" style="stroke-width:${3*k};opacity:.35"/>`;
+    sv+=`<path class="open-door" d="M ${F(x1,y1)} L ${F(x1+nx*o.w*s,y1+ny*o.w*s)} A ${o.w*s} ${o.w*s} 0 0 1 ${F(x2,y2)}" fill="none" style="stroke-width:${2.4*k}"/>`;
+  }
+  return sv;
 }
 function setOpeningStyle(ri,oi,v){ P.rooms[ri].openings[oi].style=v; drawSvg(); }
 function toggleReja(ri,oi,on){ P.rooms[ri].openings[oi].reja=!!on; draw(); }
@@ -2403,6 +2427,7 @@ function drawSvg(){
     out+=`<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="${t.color}" style="stroke-width:${2.4*k}"/>`;
     const pk=Math.max(2,Math.round(len/(0.12*P.scale))); for(let j=1;j<pk;j++){ const f=j/pk, px=a.x+(b.x-a.x)*f, py=a.y+(b.y-a.y)*f; out+=`<line x1="${px}" y1="${py}" x2="${(px+nx*4*k).toFixed(1)}" y2="${(py+ny*4*k).toFixed(1)}" stroke="${t.color}" style="stroke-width:${1*k}"/>`; }
     out+=`<text class="edge-len" x="${((a.x+b.x)/2+nx*9*k).toFixed(1)}" y="${((a.y+b.y)/2+ny*9*k).toFixed(1)}" text-anchor="middle" style="font-size:${11*k}px;stroke-width:${3*k}px">${(len/P.scale).toFixed(2)} m</text>`; });
+  (P.freeOpenings||[]).forEach(o=>{ if(openVisible(o)) out+=drawFreeOpening(o,k); });
   $('planSvg').innerHTML=out;
 }
 function buildGrid(vb,s,k){ const mv=vb.w/s; const step=mv>80?5:1, sp=step*s; let out='';
@@ -2550,7 +2575,7 @@ function renderRoomsPanel(){
 
 async function savePlan(){
   P.name=$('pl_name').value; P.client_id=$('pl_client').value; P.scale=Number($('pl_scale').value||50);
-  const body={ name:P.name, client_id:P.client_id, scale:P.scale, area_total:totalFloor(), data:{rooms:P.rooms,bg:P.bg,calc:P.calc,repairs:P.repairs,furniture:P.furniture,stairs:P.stairs,rails:P.rails,floors:P.floors} };
+  const body={ name:P.name, client_id:P.client_id, scale:P.scale, area_total:totalFloor(), data:{rooms:P.rooms,bg:P.bg,calc:P.calc,repairs:P.repairs,furniture:P.furniture,stairs:P.stairs,rails:P.rails,floors:P.floors,freeOpenings:P.freeOpenings||[]} };
   if(JSON.stringify(body).length>4600000){ toast('La imagen de fondo es muy pesada; usa una más liviana',true); return; }
   try{ const saved=P.id?await api.send('PUT','/api/plans/'+P.id,body):await api.send('POST','/api/plans',body); P.id=saved.id; toast('Plano guardado ✓'); }
   catch(e){ toast(e.message,true); }
@@ -2585,6 +2610,28 @@ function printPlan(){
     body+=`<text x="${cx}" y="${cy-2*K}" text-anchor="middle" font-size="${13*K}" font-weight="700" fill="#111" paint-order="stroke" stroke="#fff" stroke-width="${3*K}">${esc(r.name)}</text>`;
     body+=`<text x="${cx}" y="${cy+15*K}" text-anchor="middle" font-size="${11*K}" fill="#7b2ff7" paint-order="stroke" stroke="#fff" stroke-width="${3*K}">${floorArea(r).toFixed(2)} m²</text>`;
   });
+  // Escaleras
+  (P.stairs||[]).forEach(st=>{ const longW=st.w>=st.h, len=longW?st.w:st.h, n=Math.max(2,Math.round(len/(0.28*s)));
+    body+=`<rect x="${st.x}" y="${st.y}" width="${st.w}" height="${st.h}" fill="rgba(136,108,255,.12)" stroke="#a99" stroke-width="${1.8*K}"/>`;
+    for(let i=1;i<n;i++){ const f=i/n; if(longW){ const x=st.x+st.w*f; body+=`<line x1="${x}" y1="${st.y}" x2="${x}" y2="${st.y+st.h}" stroke="#cbb" stroke-width="${1.2*K}"/>`; } else { const y=st.y+st.h*f; body+=`<line x1="${st.x}" y1="${y}" x2="${st.x+st.w}" y2="${y}" stroke="#cbb" stroke-width="${1.2*K}"/>`; } }
+    body+=`<text x="${st.x+st.w/2}" y="${st.y+st.h/2+5*K}" text-anchor="middle" font-size="${14*K}" fill="#664">Escalera</text>`; });
+  // Barandales / verjas
+  (P.rails||[]).forEach(r=>{ const t=RAIL_TYPES[r.kind]||RAIL_TYPES.barandal, a=r.a, b=r.b, ang=Math.atan2(b.y-a.y,b.x-a.x), nx=-Math.sin(ang), ny=Math.cos(ang), len=dist(a,b);
+    body+=`<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="${t.color}" stroke-width="${2.8*K}"/>`;
+    const pk=Math.max(2,Math.round(len/(0.12*s))); for(let j=1;j<pk;j++){ const f=j/pk, px=a.x+(b.x-a.x)*f, py=a.y+(b.y-a.y)*f; body+=`<line x1="${px}" y1="${py}" x2="${(px+nx*4*K).toFixed(1)}" y2="${(py+ny*4*K).toFixed(1)}" stroke="${t.color}" stroke-width="${1.2*K}"/>`; }
+    body+=`<text x="${((a.x+b.x)/2+nx*10*K).toFixed(1)}" y="${((a.y+b.y)/2+ny*10*K).toFixed(1)}" text-anchor="middle" font-size="${11*K}" fill="#555" paint-order="stroke" stroke="#fff" stroke-width="${3*K}">${(len/s).toFixed(2)} m</text>`; });
+  // Reparaciones
+  (P.repairs||[]).forEach(d=>{ const t=REPAIR_TYPES[d.kind]||REPAIR_TYPES.otro;
+    body+=`<circle cx="${d.x}" cy="${d.y}" r="${9*K}" fill="${t.color}" stroke="#fff" stroke-width="${1.5*K}" opacity=".9"/>`;
+    body+=`<text x="${d.x}" y="${d.y+4*K}" text-anchor="middle" font-size="${10*K}" fill="#fff">${t.icon}</text>`; });
+  // Muebles
+  (P.furniture||[]).forEach(f=>{ const t=FURNITURE_TYPES[f.kind]||FURNITURE_TYPES.otro;
+    body+=`<rect x="${f.x-10*K}" y="${f.y-10*K}" width="${20*K}" height="${20*K}" rx="${4*K}" fill="rgba(20,20,22,.65)" stroke="#fff" stroke-width="${1.2*K}"/>`;
+    body+=`<text x="${f.x}" y="${f.y+5*K}" text-anchor="middle" font-size="${11*K}" fill="#fff">${t.icon}</text>`; });
+  // Ventanas/puertas libres
+  (P.freeOpenings||[]).forEach(o=>{ const half=(o.w*s)/2, ang=o.angle||0, ux=Math.cos(ang), uy=Math.sin(ang), nx=-Math.sin(ang), ny=Math.cos(ang);
+    const x1=o.x-ux*half, y1=o.y-uy*half, x2=o.x+ux*half, y2=o.y+uy*half;
+    body+=`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${o.kind==='door'?'#e08a00':'#0a84c8'}" stroke-width="${4*K}"/>`; });
   const cl=S.clients.find(x=>x.id===$('pl_client').value);
   const rows=P.rooms.map(r=>`<tr><td style="padding:6px 10px;border-bottom:1px solid #eee">${esc(r.name)}</td><td style="padding:6px 10px;border-bottom:1px solid #eee;text-align:right">${floorArea(r).toFixed(2)}</td><td style="padding:6px 10px;border-bottom:1px solid #eee;text-align:right">${wallArea(r).toFixed(2)}</td></tr>`).join('');
   $('printArea').innerHTML=`<div style="font-family:'Space Grotesk',Arial,sans-serif;color:#111;padding:34px 40px;max-width:840px;margin:0 auto">
