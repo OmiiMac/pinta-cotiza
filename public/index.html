@@ -1135,8 +1135,13 @@ function quoteTable(list){
       <td>${fmtDate(q.issue_date)}</td>
       <td>${statusBadge(q.status)}</td>
       <td class="num mono">${money(q.total)}</td>
-      <td class="num"><button class="btn sm ghost" onclick="openQuote('${q.id}')">Abrir</button></td>
+      <td class="num" style="white-space:nowrap"><button class="btn sm ghost" onclick="openQuote('${q.id}')">Abrir</button> <button class="btn sm ghost" style="color:#e55;border-color:#e55" onclick="delQuote('${q.id}','${esc(q.number||q.id)}')">🗑</button></td>
     </tr>`).join('')}</tbody></table></div>`;
+}
+async function delQuote(id,num){
+  if(!confirm('¿Eliminar cotización '+num+'? Esta acción no se puede deshacer.')) return;
+  try{ await api.send('DELETE','/api/quotes/'+id); toast('Cotización eliminada'); renderQuotes(); renderDash(); }
+  catch(e){ toast(e.message,true); }
 }
 async function renderQuotes(){
   try{ S.quotes = await api.get('/api/quotes'); }catch(e){}
