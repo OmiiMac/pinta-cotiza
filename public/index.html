@@ -631,7 +631,7 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
     </div>
 
     <div class="panel">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
         <h3 class="mono" style="margin:0;font-size:15px">Partidas</h3>
         <div class="prod-search">
           <input id="prodSearch" placeholder="🔎 Buscar producto del catálogo y sumar…" autocomplete="off"
@@ -641,6 +641,22 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
         </div>
         <div class="spacer" style="margin-left:auto"></div>
         <button class="btn sm" onclick="addItem()">+ Partida</button>
+      </div>
+      <!-- Gastos rápidos -->
+      <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px;padding:10px;background:var(--panel2);border-radius:10px;border:1px solid var(--border)">
+        <span style="font-size:11px;color:var(--muted2);width:100%;margin-bottom:2px">⚡ Agregar gasto rápido:</span>
+        <button class="btn sm ghost" onclick="addQuickCost('🚗 Transporte / Gasolina','alquiler',1,'viaje',45)">🚗 Transporte</button>
+        <button class="btn sm ghost" onclick="addQuickCost('🏗️ Andamio (alquiler)','alquiler',1,'día',35)">🏗️ Andamio</button>
+        <button class="btn sm ghost" onclick="addQuickCost('🪜 Escalera (alquiler)','alquiler',1,'día',15)">🪜 Escalera</button>
+        <button class="btn sm ghost" onclick="addQuickCost('🧪 Pasta / Masilla','materiales',1,'cubo',18)">🧪 Pasta</button>
+        <button class="btn sm ghost" onclick="addQuickCost('🖌️ Rodillos y brochas','herramienta',1,'juego',25)">🖌️ Herramientas</button>
+        <button class="btn sm ghost" onclick="addQuickCost('⚙️ Máquina compresor/pistola','equipo',1,'día',30)">⚙️ Máquina</button>
+        <button class="btn sm ghost" onclick="addQuickCost('📏 Extensiones y accesorios','herramienta',1,'juego',20)">📏 Extensiones</button>
+        <button class="btn sm ghost" onclick="addQuickCost('🧹 Limpieza y preparación','mano-obra',1,'global',50)">🧹 Preparación</button>
+        <button class="btn sm ghost" onclick="addQuickCost('⛽ Combustible / Viáticos','otro',1,'global',30)">⛽ Viáticos</button>
+        <button class="btn sm ghost" onclick="addQuickCost('📋 Gastos administrativos','otro',1,'global',40)">📋 Administrativo</button>
+        <button class="btn sm ghost" onclick="addQuickCost('📦 Materiales de protección (lonas/plástico)','materiales',1,'global',35)">📦 Protección</button>
+        <button class="btn sm ghost" onclick="addQuickCost('🔧 Herramientas menores','herramienta',1,'global',20)">🔧 Menores</button>
       </div>
       <div id="itemsWrap"></div>
     </div>
@@ -1284,6 +1300,10 @@ function itUpd(i,k,v){
 }
 function addItem(){ S.editing.items.push(blankItem()); renderItems(); }
 function rmItem(i){ S.editing.items.splice(i,1); if(!S.editing.items.length) S.editing.items.push(blankItem()); renderItems(); }
+function addQuickCost(desc,cost_type,qty,unit,unit_price){
+  const it=blankItem(); it.description=desc; it.cost_type=cost_type; it.qty=qty; it.unit=unit; it.unit_price=unit_price; it.is_area=0;
+  S.editing.items.push(it); renderItems(); recalc(); toast(desc.split(' ').slice(0,3).join(' ')+' agregado');
+}
 
 function recalc(){
   const q=S.editing; if(!q) return;
