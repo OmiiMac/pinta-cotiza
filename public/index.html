@@ -346,6 +346,7 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
 
 /* ---------- Plan editor (CAD futurista) ---------- */
 .plan-wrap{display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start}
+.plan-side{max-height:calc(100vh - 220px);overflow-y:auto;position:sticky;top:16px}
 .plan-canvas-box{background:linear-gradient(180deg,rgba(18,15,48,.6),rgba(10,9,32,.6));border:1px solid var(--border2);border-radius:var(--radius);padding:10px;position:relative;box-shadow:inset 0 0 50px rgba(90,60,200,.12)}
 .plan-toolbar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
 .plan-toolbar .sep{width:1px;height:24px;background:var(--border2);margin:0 3px}
@@ -800,16 +801,18 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
           <div style="font-size:11px;color:var(--muted2);margin-bottom:10px"><span style="color:var(--cyan2)">piso</span> / <span style="color:var(--green)">pared</span></div>
           <div id="roomsPanel"></div>
         </div>
-        <!-- Motor de cálculo inteligente — pegado al panel de salas -->
-        <div class="panel" id="calcPanel" style="margin-top:12px;padding:14px">
-          <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:6px">
-            <h3 class="ttl" style="font-size:13px;margin:0">🧮 Presupuesto</h3>
-            <button class="btn green sm" style="margin-left:auto" onclick="projectToQuote()">➕ Cotizar</button>
-          </div>
-          <div class="calc-params" id="calcParams"></div>
-          <div id="calcResult" style="margin-top:10px"></div>
-        </div>
       </div>
+    </div>
+
+    <!-- Motor de cálculo inteligente -->
+    <div class="panel" id="calcPanel" style="margin-top:16px">
+      <div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:6px">
+        <h3 class="ttl">🧮 Presupuesto inteligente</h3>
+        <span class="hint" style="margin:0">Vanos ≤ umbral no descuentan material pero suman recorte · desperdicio y complejidad incluidos</span>
+        <button class="btn green sm" style="margin-left:auto" onclick="projectToQuote()">➕ Cotizar este presupuesto</button>
+      </div>
+      <div class="calc-params" id="calcParams"></div>
+      <div id="calcResult" style="margin-top:14px"></div>
     </div>
   </section>
 
