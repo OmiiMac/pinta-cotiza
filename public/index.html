@@ -1252,7 +1252,7 @@ async function changeStatus(v){
 
 function renderItems(){
   const cats=[['pintura-interior','Pintura interior'],['pintura-exterior','Pintura exterior'],['gypsum','Gypsum'],['remodelacion','Remodelación'],['otro','Otro']];
-  const units=['m2','ml','und','global'];
+  const units=['m2','ml','und','global','día','hora','semana','viaje','cubo','juego','bolsa','rollo','litro','kg','mes'];
   $('itemsWrap').innerHTML = S.editing.items.map((it,i)=>`
     <div class="item-row ${it.is_area?'is-area':''}" data-i="${i}">
       <div class="top">
@@ -1272,7 +1272,7 @@ function renderItems(){
       <div class="manual-qty" style="margin-top:10px;display:${it.is_area?'none':'grid'};grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:0 12px">
         <label class="f"><span>Categoría</span><select onchange="itUpd(${i},'category',this.value)">${cats.map(c=>`<option value="${c[0]}" ${it.category===c[0]?'selected':''}>${c[1]}</option>`).join('')}</select></label>
         <label class="f"><span>Cantidad</span><input type="number" step="0.01" min="0" value="${it.qty||0}" oninput="itUpd(${i},'qty',this.value)"></label>
-        <label class="f"><span>Unidad</span><select onchange="itUpd(${i},'unit',this.value)">${units.map(u=>`<option ${it.unit===u?'selected':''}>${u}</option>`).join('')}</select></label>
+        <label class="f"><span>Unidad</span><select onchange="itUpd(${i},'unit',this.value)">${[...new Set([...units,it.unit||'und'])].map(u=>`<option ${it.unit===u?'selected':''}>${u}</option>`).join('')}</select></label>
       </div>
       <div class="item-foot">
         <label class="switch"><input type="checkbox" ${it.is_area?'checked':''} onchange="itUpd(${i},'is_area',this.checked?1:0)"> Calcular por área (m²)</label>
