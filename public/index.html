@@ -1272,7 +1272,7 @@ function renderItems(){
       <div class="manual-qty" style="margin-top:10px;display:${it.is_area?'none':'flex'};flex-wrap:wrap;align-items:flex-end;gap:8px 14px">
         <label class="f" style="min-width:140px;flex:1"><span>Categoría</span><select onchange="itUpd(${i},'category',this.value)">${cats.map(c=>`<option value="${c[0]}" ${it.category===c[0]?'selected':''}>${c[1]}</option>`).join('')}</select></label>
         <div style="display:flex;align-items:flex-end;gap:6px;background:var(--surface2,#1a1a2e);border:1px solid var(--border);border-radius:8px;padding:6px 10px">
-          <label class="f" style="margin:0"><span style="font-size:11px;color:var(--muted)">Cantidad</span><input type="number" step="0.01" min="0" style="width:72px;font-size:16px;font-weight:700;background:transparent;border:none;padding:2px 0;color:var(--fg)" value="${it.qty||1}" oninput="itUpd(${i},'qty',this.value)"></label>
+          <label class="f" style="margin:0"><span style="font-size:11px;color:var(--muted)">Cantidad</span><input type="number" step="0.01" min="0" style="width:72px;font-size:16px;font-weight:700;background:transparent;border:none;padding:2px 0;color:var(--fg)" value="${it.qty||0}" oninput="itUpd(${i},'qty',this.value)"></label>
           <select style="border:none;background:transparent;color:var(--accent,#00e5ff);font-weight:600;font-size:14px;padding:0 2px 2px;cursor:pointer" onchange="itUpd(${i},'unit',this.value)">${[...new Set([...units,it.unit||'und'])].map(u=>`<option ${it.unit===u?'selected':''}>${u}</option>`).join('')}</select>
           <span style="color:var(--muted);font-size:18px;line-height:1;padding-bottom:2px">×</span>
           <label class="f" style="margin:0"><span id="itunit-${i}" style="font-size:11px;color:var(--muted)">Precio / ${it.unit||'und'}</span><input type="number" step="0.01" min="0" style="width:90px;font-size:15px;font-weight:600;background:transparent;border:none;padding:2px 0;color:var(--fg)" value="${it.unit_price||0}" oninput="itUpd(${i},'unit_price',this.value)"></label>
@@ -1297,7 +1297,7 @@ function itUpd(i,k,v){
   const it=S.editing.items[i];
   if(['width','height','qcount','deduction','qty','unit_price','coats','paint_yield'].includes(k)) v=v===''?0:Number(v);
   it[k]=v;
-  if(k==='is_area'){ renderItems(); return; }
+  if(k==='is_area'){ if(!v && !(+it.qty)) it.qty=1; renderItems(); return; }
   if(k==='unit'){ const lbl=$('itunit-'+i); if(lbl) lbl.textContent='Precio / '+v; }
   const lt=lineTotal(it); $('itln-'+i).textContent=money(lt);
   const calc=$('itln-calc-'+i); if(calc) calc.textContent=money(lt);
@@ -1481,6 +1481,7 @@ function pickCatalog(id){
   const it=blankItem();
   it.description=c.name; it.category=c.category||'otro'; it.unit=c.unit||'m2';
   it.unit_price=+c.unit_price||0; it.is_area=(c.unit==='m2')?1:0;
+  if(!it.is_area) it.qty=1;
   if(c.paint_yield) it.paint_yield=+c.paint_yield; if(c.coats) it.coats=+c.coats;
   S.editing.items.push(it); closeModal(); renderItems(); toast('Partida agregada');
 }
