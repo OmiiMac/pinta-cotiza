@@ -466,18 +466,53 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
   nav.tabs button{flex:0 0 auto}
   .brand .wm b{font-size:14px}
   main{padding:16px 12px 76px}
-  .page-head h1{font-size:19px}
+  .page-head{flex-wrap:wrap}
+  .page-head h1{font-size:19px;flex:1 1 100%;order:-1}
   .page-head input{flex:1 1 140px;min-width:0}
-  .panel{padding:15px}
+  .page-head .btn{flex:1 1 auto;min-width:0}
+  .panel{padding:14px 12px}
   /* inputs a 16px evita el zoom automático de iOS al enfocar */
   input,select,textarea{font-size:16px}
   .btn,.btn.sm{font-size:13px}
+  .form-grid{grid-template-columns:1fr}
+  .item-row{padding:12px 10px}
   .item-row .top{flex-wrap:wrap}
+  .item-row .top .desc{flex:1 1 100%}
   .item-row .top select{width:100% !important;flex:1 1 100% !important}
-  .totals{max-width:none}
+  /* El .top .btn (eliminar X) se mantiene chico y no ocupa toda la fila */
+  .item-row .top .btn{flex:0 0 auto}
+  .area-fields{grid-template-columns:repeat(2,1fr) !important}
+  /* La caja verde de cálculo Cantidad × Precio = Total se apila bonita */
+  .manual-qty{flex-direction:column !important;align-items:stretch !important}
+  .manual-qty > label.f{width:100%;max-width:none}
+  .manual-qty > div{width:100%;flex-wrap:wrap;justify-content:space-between}
+  .manual-qty > div > label.f{flex:1 1 42%}
+  .manual-qty > div > label.f input{width:100% !important;font-size:17px !important}
+  .manual-qty > div select{font-size:15px}
+  .item-foot{gap:10px 12px}
+  .item-foot .ln{margin-left:auto;font-size:18px}
+  .item-foot label{flex:1 1 auto}
+  .item-foot label input{width:100% !important}
+  .totals{max-width:none;width:100%}
+  .row2{grid-template-columns:1fr 1fr;gap:0 10px}
+  .prod-search{flex:1 1 100%;max-width:none;min-width:0}
   #quoteFab{right:14px;bottom:14px;padding:12px 16px;font-size:13px}
   .plan-toolbar{gap:5px}
   .tool{padding:7px 9px;font-size:12px}
+  /* tabla de cotizaciones puede desbordarse horizontal con touch-scroll */
+  .tscroll .tbl{min-width:480px}
+}
+@media(max-width:480px){
+  main{padding:14px 10px 76px}
+  .panel{padding:12px 10px}
+  .area-fields{grid-template-columns:1fr 1fr !important;gap:4px 10px}
+  /* Botón "Nueva partida" + buscador apilados */
+  .item-row .top .desc input{font-size:15px}
+  .item-foot{font-size:12px}
+  .item-foot .ln{font-size:17px}
+  .niv-grid{grid-template-columns:1fr !important}
+  /* Quick cost buttons mas compactos */
+  .btn.sm.ghost{padding:7px 9px;font-size:12px}
 }
 @media(max-width:420px){
   .page-head{gap:8px}
