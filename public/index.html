@@ -1269,18 +1269,21 @@ function renderItems(){
         <label class="f"><span>Cantidad (paredes)</span><input type="number" step="1" min="1" value="${it.qcount||1}" oninput="itUpd(${i},'qcount',this.value)"></label>
         <label class="f"><span>Descontar (m²)</span><input type="number" step="0.01" min="0" value="${it.deduction||0}" oninput="itUpd(${i},'deduction',this.value)" title="Puertas, ventanas, etc."></label>
       </div>
-      <div class="manual-qty" style="margin-top:10px;display:${it.is_area?'none':'grid'};grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:0 12px">
-        <label class="f"><span>Categoría</span><select onchange="itUpd(${i},'category',this.value)">${cats.map(c=>`<option value="${c[0]}" ${it.category===c[0]?'selected':''}>${c[1]}</option>`).join('')}</select></label>
-        <label class="f"><span>Cantidad</span><input type="number" step="0.01" min="0" value="${it.qty||0}" oninput="itUpd(${i},'qty',this.value)"></label>
-        <label class="f"><span>Unidad</span><select onchange="itUpd(${i},'unit',this.value)">${[...new Set([...units,it.unit||'und'])].map(u=>`<option ${it.unit===u?'selected':''}>${u}</option>`).join('')}</select></label>
+      <div class="manual-qty" style="margin-top:10px;display:${it.is_area?'none':'flex'};flex-wrap:wrap;align-items:flex-end;gap:8px 14px">
+        <label class="f" style="min-width:140px;flex:1"><span>Categoría</span><select onchange="itUpd(${i},'category',this.value)">${cats.map(c=>`<option value="${c[0]}" ${it.category===c[0]?'selected':''}>${c[1]}</option>`).join('')}</select></label>
+        <div style="display:flex;align-items:flex-end;gap:6px;background:var(--surface2,#1a1a2e);border:1px solid var(--border);border-radius:8px;padding:6px 10px">
+          <label class="f" style="margin:0"><span style="font-size:11px;color:var(--muted)">Cantidad</span><input type="number" step="0.01" min="0" style="width:72px;font-size:16px;font-weight:700;background:transparent;border:none;padding:2px 0;color:var(--fg)" value="${it.qty||1}" oninput="itUpd(${i},'qty',this.value)"></label>
+          <select style="border:none;background:transparent;color:var(--accent,#00e5ff);font-weight:600;font-size:14px;padding:0 2px 2px;cursor:pointer" onchange="itUpd(${i},'unit',this.value)">${[...new Set([...units,it.unit||'und'])].map(u=>`<option ${it.unit===u?'selected':''}>${u}</option>`).join('')}</select>
+          <span style="color:var(--muted);font-size:18px;line-height:1;padding-bottom:2px">×</span>
+          <label class="f" style="margin:0"><span id="itunit-${i}" style="font-size:11px;color:var(--muted)">Precio / ${it.unit||'und'}</span><input type="number" step="0.01" min="0" style="width:90px;font-size:15px;font-weight:600;background:transparent;border:none;padding:2px 0;color:var(--fg)" value="${it.unit_price||0}" oninput="itUpd(${i},'unit_price',this.value)"></label>
+          <span style="color:var(--muted);font-size:18px;line-height:1;padding-bottom:2px">=</span>
+          <span style="font-size:16px;font-weight:700;color:var(--green,#39ff14);min-width:80px;text-align:right;padding-bottom:2px" id="itln-${i}">${money(lineTotal(it))}</span>
+        </div>
       </div>
       <div class="item-foot">
         <label class="switch"><input type="checkbox" ${it.is_area?'checked':''} onchange="itUpd(${i},'is_area',this.checked?1:0)"> Calcular por área (m²)</label>
-        <label style="display:flex;align-items:center;gap:7px;font-size:13px;color:var(--muted)">P. unit. <input type="number" step="0.01" min="0" style="width:100px" value="${it.unit_price||0}" oninput="itUpd(${i},'unit_price',this.value)"></label>
-        ${it.is_area?`<label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)">Manos <input type="number" step="1" min="1" style="width:60px" value="${it.coats||2}" oninput="itUpd(${i},'coats',this.value)"></label>
-        <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)">m²/gal <input type="number" step="1" min="1" style="width:66px" value="${it.paint_yield||35}" oninput="itUpd(${i},'paint_yield',this.value)"></label>`:''}
-        <span class="mat-hint" id="itmeta-${i}"></span>
-        <span class="ln" id="itln-${i}">${money(lineTotal(it))}</span>
+        ${it.is_area?`<label style="display:flex;align-items:center;gap:7px;font-size:13px;color:var(--muted)">P. unit. <input type="number" step="0.01" min="0" style="width:100px" value="${it.unit_price||0}" oninput="itUpd(${i},'unit_price',this.value)"></label><label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)">Manos <input type="number" step="1" min="1" style="width:60px" value="${it.coats||2}" oninput="itUpd(${i},'coats',this.value)"></label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)">m²/gal <input type="number" step="1" min="1" style="width:66px" value="${it.paint_yield||35}" oninput="itUpd(${i},'paint_yield',this.value)"></label><span class="mat-hint" id="itmeta-${i}"></span><span class="ln" id="itln-${i}">${money(lineTotal(it))}</span>`:'<span class="mat-hint" id="itmeta-${i}"></span>'}
       </div>
     </div>`).join('') || emptyBox('Sin partidas','Agrega una con “+ Partida”.');
   recalc();
@@ -1295,6 +1298,7 @@ function itUpd(i,k,v){
   if(['width','height','qcount','deduction','qty','unit_price','coats','paint_yield'].includes(k)) v=v===''?0:Number(v);
   it[k]=v;
   if(k==='is_area'){ renderItems(); return; }
+  if(k==='unit'){ const lbl=$('itunit-'+i); if(lbl) lbl.textContent='Precio / '+v; }
   $('itln-'+i).textContent=money(lineTotal(it));
   recalc();
 }
