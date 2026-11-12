@@ -1262,7 +1262,7 @@ function renderItems(){
         <select title="Tipo de costo" style="width:150px;flex:none" onchange="itUpd(${i},'cost_type',this.value)">${COST_TYPES.map(c=>`<option value="${c[0]}" ${(it.cost_type||'otro')===c[0]?'selected':''}>${c[1]}</option>`).join('')}</select>
         <button class="btn icon danger sm" title="Eliminar" onclick="rmItem(${i})">✕</button>
       </div>
-      <div class="area-fields" style="margin-top:10px;display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:0 12px">
+      <div class="area-fields" style="margin-top:10px;display:${it.is_area?'grid':'none'};grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:0 12px">
         <label class="f"><span>Categoría</span><select onchange="itUpd(${i},'category',this.value)">${cats.map(c=>`<option value="${c[0]}" ${it.category===c[0]?'selected':''}>${c[1]}</option>`).join('')}</select></label>
         <label class="f"><span>Ancho (m)</span><input type="number" step="0.01" min="0" value="${it.width||0}" oninput="itUpd(${i},'width',this.value)"></label>
         <label class="f"><span>Alto (m)</span><input type="number" step="0.01" min="0" value="${it.height||0}" oninput="itUpd(${i},'height',this.value)"></label>
