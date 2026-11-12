@@ -1277,13 +1277,13 @@ function renderItems(){
           <span style="color:var(--muted);font-size:18px;line-height:1;padding-bottom:2px">×</span>
           <label class="f" style="margin:0"><span id="itunit-${i}" style="font-size:11px;color:var(--muted)">Precio / ${it.unit||'und'}</span><input type="number" step="0.01" min="0" style="width:90px;font-size:15px;font-weight:600;background:transparent;border:none;padding:2px 0;color:var(--fg)" value="${it.unit_price||0}" oninput="itUpd(${i},'unit_price',this.value)"></label>
           <span style="color:var(--muted);font-size:18px;line-height:1;padding-bottom:2px">=</span>
-          <span style="font-size:16px;font-weight:700;color:var(--green,#39ff14);min-width:80px;text-align:right;padding-bottom:2px" id="itln-${i}">${money(lineTotal(it))}</span>
+          <span style="font-size:16px;font-weight:700;color:var(--green,#39ff14);min-width:80px;text-align:right;padding-bottom:2px" id="itln-calc-${i}">${money(lineTotal(it))}</span>
         </div>
       </div>
       <div class="item-foot">
         <label class="switch"><input type="checkbox" ${it.is_area?'checked':''} onchange="itUpd(${i},'is_area',this.checked?1:0)"> Calcular por área (m²)</label>
-        ${it.is_area?`<label style="display:flex;align-items:center;gap:7px;font-size:13px;color:var(--muted)">P. unit. <input type="number" step="0.01" min="0" style="width:100px" value="${it.unit_price||0}" oninput="itUpd(${i},'unit_price',this.value)"></label><label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)">Manos <input type="number" step="1" min="1" style="width:60px" value="${it.coats||2}" oninput="itUpd(${i},'coats',this.value)"></label>
-        <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)">m²/gal <input type="number" step="1" min="1" style="width:66px" value="${it.paint_yield||35}" oninput="itUpd(${i},'paint_yield',this.value)"></label><span class="mat-hint" id="itmeta-${i}"></span><span class="ln" id="itln-${i}">${money(lineTotal(it))}</span>`:'<span class="mat-hint" id="itmeta-${i}"></span>'}
+        ${it.is_area?`<label style="display:flex;align-items:center;gap:7px;font-size:13px;color:var(--muted)">P. unit. <input type="number" step="0.01" min="0" style="width:100px" value="${it.unit_price||0}" oninput="itUpd(${i},'unit_price',this.value)"></label><label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)">Manos <input type="number" step="1" min="1" style="width:60px" value="${it.coats||2}" oninput="itUpd(${i},'coats',this.value)"></label><label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)">m²/gal <input type="number" step="1" min="1" style="width:66px" value="${it.paint_yield||35}" oninput="itUpd(${i},'paint_yield',this.value)"></label><span class="mat-hint" id="itmeta-${i}"></span>`:''}
+        <span class="ln" id="itln-${i}">${money(lineTotal(it))}</span>
       </div>
     </div>`).join('') || emptyBox('Sin partidas','Agrega una con “+ Partida”.');
   recalc();
@@ -1299,7 +1299,8 @@ function itUpd(i,k,v){
   it[k]=v;
   if(k==='is_area'){ renderItems(); return; }
   if(k==='unit'){ const lbl=$('itunit-'+i); if(lbl) lbl.textContent='Precio / '+v; }
-  $('itln-'+i).textContent=money(lineTotal(it));
+  const lt=lineTotal(it); $('itln-'+i).textContent=money(lt);
+  const calc=$('itln-calc-'+i); if(calc) calc.textContent=money(lt);
   recalc();
 }
 function addItem(){ S.editing.items.push(blankItem()); renderItems(); }
@@ -1316,6 +1317,7 @@ function recalc(){
   q.margin_pct=Number($('q_margin').value||0);
   let cost=0; q.items.forEach((it,i)=>{ const lt=lineTotal(it); cost+=lt;
     const el=$('itln-'+i); if(el) el.textContent=money(lt);
+    const calc=$('itln-calc-'+i); if(calc) calc.textContent=money(lt);
     const meta=$('itmeta-'+i);
     if(meta){ if(it.is_area){ const area=itemQty(it); const gal=galons(it); meta.textContent=`${area.toFixed(2)} m² · ${gal} gal`; meta.style.display=''; } else meta.style.display='none'; }
   });
