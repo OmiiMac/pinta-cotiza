@@ -1349,18 +1349,51 @@ function addQuickCost(desc,cost_type,qty,unit,unit_price){
 // ============================================================
 // Calculador de PAPEL AHUMADO (medidas en ft)
 // ============================================================
+// Precios por ft²: automotriz (auto) y arquitectónico (arq)
 const TINT_TYPES={
-  basico:        {name:'Básico (teñido)',             material:3.5, install:2.5, desc:'Rechazo solar básico, estándar'},
-  carbono:       {name:'Carbono',                      material:5,   install:3,   desc:'No se desvanece, mejor rechazo'},
-  ceramico:      {name:'Cerámico (nano)',              material:9,   install:4,   desc:'Nano cerámico, alto rechazo UV/IR'},
-  johnson:       {name:'Johnson Window Films',         material:7,   install:3.5, desc:'Marca americana — línea Marathon/Insignia'},
-  madico:        {name:'Madico',                       material:10,  install:4,   desc:'Marca americana — Sunscape / ChargeGuard'},
-  sunglaze:      {name:'Sun Glaze / SunTek',           material:6,   install:3,   desc:'Buena relación calidad-precio, rechazo medio'},
-  premium:       {name:'Premium (Llumar / 3M)',        material:14,  install:5,   desc:'Marca premium, garantía larga'}
+  basico:   {name:'Básico (teñido)',          auto:{m:3.5, i:2.5}, arq:{m:3,    i:2.5}, desc:'Rechazo solar básico, estándar'},
+  carbono:  {name:'Carbono',                  auto:{m:5,   i:3},   arq:{m:4.5,  i:3},   desc:'No se desvanece, mejor rechazo'},
+  ceramico: {name:'Cerámico (nano)',          auto:{m:9,   i:4},   arq:{m:8,    i:3.5}, desc:'Nano cerámico, alto rechazo UV/IR'},
+  johnson:  {name:'Johnson Window Films',     auto:{m:7,   i:3.5}, arq:{m:6.5,  i:3},   desc:'Marca americana — Marathon/Insignia (auto) / líneas arquitectónicas'},
+  madico:   {name:'Madico',                   auto:{m:10,  i:4},   arq:{m:9,    i:3.5}, desc:'Marca americana — Sunscape/ChargeGuard (auto) / Safety+Solar (arq)'},
+  sunglaze: {name:'Sun Glaze / SunTek',       auto:{m:6,   i:3},   arq:{m:5.5,  i:2.8}, desc:'Buena relación calidad-precio, rechazo medio'},
+  premium:  {name:'Premium (Llumar / 3M)',    auto:{m:14,  i:5},   arq:{m:12,   i:4},   desc:'Marca premium, garantía extendida'}
 };
-let TINT_STATE={panels:[{w:3,h:2,label:'Vidrio 1'}],type:'carbono',material:5,install:3,installFlat:0};
+// Presets de autos: medidas aproximadas en ft de cada vidrio
+const CAR_PRESETS={
+  sedan:   {name:'Sedán (4 ventanas + luneta)', panels:[
+    {label:'Lateral del. izq.',w:2.8,h:1.4},{label:'Lateral del. der.',w:2.8,h:1.4},
+    {label:'Lateral tras. izq.',w:2.2,h:1.3},{label:'Lateral tras. der.',w:2.2,h:1.3},
+    {label:'Luneta trasera',w:4.5,h:1.6}]},
+  sedanFull:{name:'Sedán completo (incluye parabrisas)', panels:[
+    {label:'Parabrisas',w:5,h:1.6},
+    {label:'Lateral del. izq.',w:2.8,h:1.4},{label:'Lateral del. der.',w:2.8,h:1.4},
+    {label:'Lateral tras. izq.',w:2.2,h:1.3},{label:'Lateral tras. der.',w:2.2,h:1.3},
+    {label:'Luneta trasera',w:4.5,h:1.6}]},
+  suv:     {name:'SUV (6 vidrios + luneta)', panels:[
+    {label:'Lateral del. izq.',w:3,h:1.6},{label:'Lateral del. der.',w:3,h:1.6},
+    {label:'Lateral tras. izq.',w:2.6,h:1.5},{label:'Lateral tras. der.',w:2.6,h:1.5},
+    {label:'Ventanilla izq.',w:2,h:1.4},{label:'Ventanilla der.',w:2,h:1.4},
+    {label:'Luneta trasera',w:5,h:1.8}]},
+  pickup:  {name:'Pickup / Camión (2 vent. + luneta)', panels:[
+    {label:'Lateral izq.',w:3.2,h:1.5},{label:'Lateral der.',w:3.2,h:1.5},
+    {label:'Luneta trasera',w:5,h:1.4}]}
+};
+let TINT_STATE={app:'auto',panels:[{w:3,h:2,label:'Vidrio 1'}],type:'carbono',material:5,install:3,installFlat:0,preset:''};
 function openTintCalc(){
-  TINT_STATE={panels:[{w:3,h:2,label:'Vidrio 1'}],type:'carbono',material:TINT_TYPES.carbono.material,install:TINT_TYPES.carbono.install,installFlat:0};
+  TINT_STATE={app:'auto',panels:[{w:2.8,h:1.4,label:'Vidrio 1'}],type:'carbono',material:TINT_TYPES.carbono.auto.m,install:TINT_TYPES.carbono.auto.i,installFlat:0,preset:''};
+  openModal(tintModalHtml());
+}
+function tintSetApp(a){
+  TINT_STATE.app=a; TINT_STATE.preset='';
+  const t=TINT_TYPES[TINT_STATE.type][a]; TINT_STATE.material=t.m; TINT_STATE.install=t.i;
+  if(a==='arq') TINT_STATE.panels=[{w:3,h:5,label:'Ventana 1'}];
+  else TINT_STATE.panels=[{w:2.8,h:1.4,label:'Vidrio 1'}];
+  openModal(tintModalHtml());
+}
+function tintSetPreset(k){
+  const p=CAR_PRESETS[k]; if(!p) return;
+  TINT_STATE.preset=k; TINT_STATE.panels=p.panels.map(x=>({...x}));
   openModal(tintModalHtml());
 }
 function tintModalHtml(){
@@ -1369,8 +1402,19 @@ function tintModalHtml(){
   const instTotal=(+t.installFlat||0) + totalFt2*(+t.install||0);
   const grandTotal=matTotal+instTotal;
   const typeOpts=Object.keys(TINT_TYPES).map(k=>`<option value="${k}" ${k===t.type?'selected':''}>${TINT_TYPES[k].name}</option>`).join('');
+  const isAuto=t.app==='auto';
   return `<h3>🪟 Cotizador de papel ahumado</h3>
-    <div style="font-size:12px;color:var(--muted);margin:-6px 0 14px">Medidas en pies (ft). Agrega cada vidrio/superficie.</div>
+    <div style="font-size:12px;color:var(--muted);margin:-6px 0 12px">Medidas en pies (ft). Agrega cada vidrio/superficie.</div>
+
+    <div style="display:flex;gap:8px;margin-bottom:14px;padding:4px;background:var(--panel2);border:1px solid var(--border);border-radius:10px">
+      <button type="button" class="btn sm ${isAuto?'primary':'ghost'}" style="flex:1" onclick="tintSetApp('auto')">🚗 Carro / Automotriz</button>
+      <button type="button" class="btn sm ${!isAuto?'primary':'ghost'}" style="flex:1" onclick="tintSetApp('arq')">🏢 Edificación / Arquitectónico</button>
+    </div>
+
+    ${isAuto?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
+      <span style="font-size:11px;color:var(--muted2);width:100%;margin-bottom:2px">⚡ Presets de carro:</span>
+      ${Object.keys(CAR_PRESETS).map(k=>`<button type="button" class="btn sm ghost ${t.preset===k?'primary':''}" onclick="tintSetPreset('${k}')">${CAR_PRESETS[k].name}</button>`).join('')}
+    </div>`:''}
 
     <div style="display:grid;grid-template-columns:1fr;gap:12px;margin-bottom:14px">
       <label class="f"><span>Tipo de película</span>
@@ -1421,7 +1465,7 @@ function tintPanelRow(p,i){
     <button class="btn sm danger" style="padding:4px 8px" onclick="tintDelPanel(${i})" title="Eliminar">✕</button>
   </div>`;
 }
-function tintSetType(k){ const t=TINT_TYPES[k]; TINT_STATE.type=k; TINT_STATE.material=t.material; TINT_STATE.install=t.install; openModal(tintModalHtml()); }
+function tintSetType(k){ const t=TINT_TYPES[k][TINT_STATE.app]; TINT_STATE.type=k; TINT_STATE.material=t.m; TINT_STATE.install=t.i; openModal(tintModalHtml()); }
 function tintAddPanel(){ TINT_STATE.panels.push({w:3,h:2,label:'Vidrio '+(TINT_STATE.panels.length+1)}); openModal(tintModalHtml()); }
 function tintDelPanel(i){ TINT_STATE.panels.splice(i,1); if(!TINT_STATE.panels.length) TINT_STATE.panels.push({w:3,h:2,label:'Vidrio 1'}); openModal(tintModalHtml()); }
 function tintRefresh(){
@@ -1440,10 +1484,11 @@ function tintAddToQuote(){
   const t=TINT_STATE; const totalFt2=t.panels.reduce((s,p)=>s+(+p.w||0)*(+p.h||0),0);
   if(totalFt2<=0){ toast('Agrega al menos un vidrio con medidas',true); return; }
   const typeName=TINT_TYPES[t.type].name;
+  const appLabel = t.app==='auto' ? (t.preset && CAR_PRESETS[t.preset] ? CAR_PRESETS[t.preset].name : 'Automotriz') : 'Edificación';
   const panelsDesc=t.panels.filter(p=>(+p.w)&&(+p.h)).map(p=>`${p.label||'Vidrio'} ${(+p.w).toFixed(2)}×${(+p.h).toFixed(2)}ft`).join(', ');
   // Partida de material
   const mat=blankItem();
-  mat.description=`Papel ahumado ${typeName} — ${panelsDesc}`;
+  mat.description=`Papel ahumado ${typeName} — ${appLabel} — ${panelsDesc}`;
   mat.cost_type='materiales'; mat.category='otro';
   mat.unit='ft2'; mat.qty=Math.round(totalFt2*100)/100; mat.unit_price=+t.material||0; mat.is_area=0;
   S.editing.items.push(mat);
