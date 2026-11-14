@@ -1379,11 +1379,12 @@ const CAR_PRESETS={
     {label:'Lateral izq.',       len:4},{label:'Lateral der.',       len:4},
     {label:'Luneta trasera',     len:5.5}]}
 };
-let TINT_STATE={app:'auto',panels:[{len:3.5,label:'Vidrio 1'}],type:'carbono',material:5,install:3,installFlat:0,preset:''};
+let TINT_STATE={mode:'simple',app:'auto',panels:[{len:3.5,label:'Vidrio 1'}],simpleFt:0,paperInfo:'',type:'carbono',material:5,install:3,installFlat:0,preset:''};
 function openTintCalc(){
-  TINT_STATE={app:'auto',panels:[{len:3.5,label:'Vidrio 1'}],type:'carbono',material:TINT_TYPES.carbono.auto.m,install:TINT_TYPES.carbono.auto.i,installFlat:0,preset:''};
+  TINT_STATE={mode:'simple',app:'auto',panels:[{len:3.5,label:'Vidrio 1'}],simpleFt:0,paperInfo:'',type:'carbono',material:TINT_TYPES.carbono.auto.m,install:TINT_TYPES.carbono.auto.i,installFlat:0,preset:''};
   openModal(tintModalHtml());
 }
+function tintSetMode(m){ TINT_STATE.mode=m; openModal(tintModalHtml()); }
 function tintSetApp(a){
   TINT_STATE.app=a; TINT_STATE.preset='';
   const t=TINT_TYPES[TINT_STATE.type][a]; TINT_STATE.material=t.m; TINT_STATE.install=t.i;
@@ -1397,21 +1398,28 @@ function tintSetPreset(k){
   openModal(tintModalHtml());
 }
 function tintModalHtml(){
-  const t=TINT_STATE; const totalFt=t.panels.reduce((s,p)=>s+(+p.len||0),0);
+  const t=TINT_STATE;
+  const totalFt = t.mode==='simple' ? (+t.simpleFt||0) : t.panels.reduce((s,p)=>s+(+p.len||0),0);
   const matTotal=totalFt*(+t.material||0);
   const instTotal=(+t.installFlat||0) + totalFt*(+t.install||0);
   const grandTotal=matTotal+instTotal;
   const typeOpts=Object.keys(TINT_TYPES).map(k=>`<option value="${k}" ${k===t.type?'selected':''}>${TINT_TYPES[k].name}</option>`).join('');
   const isAuto=t.app==='auto';
+  const isSimple=t.mode==='simple';
   return `<h3>🪟 Cotizador de papel ahumado</h3>
-    <div style="font-size:12px;color:var(--muted);margin:-6px 0 12px">Medidas en pies lineales (ft). Agrega cada vidrio/superficie.</div>
+    <div style="font-size:12px;color:var(--muted);margin:-6px 0 12px">Medidas en pies lineales (ft).</div>
+
+    <div style="display:flex;gap:6px;margin-bottom:12px;padding:4px;background:var(--panel2);border:1px solid var(--border);border-radius:10px">
+      <button type="button" class="btn sm ${isSimple?'primary':'ghost'}" style="flex:1" onclick="tintSetMode('simple')">📏 Simple (cantidad total)</button>
+      <button type="button" class="btn sm ${!isSimple?'primary':'ghost'}" style="flex:1" onclick="tintSetMode('panels')">📋 Por paneles (detallado)</button>
+    </div>
 
     <div style="display:flex;gap:8px;margin-bottom:14px;padding:4px;background:var(--panel2);border:1px solid var(--border);border-radius:10px">
       <button type="button" class="btn sm ${isAuto?'primary':'ghost'}" style="flex:1" onclick="tintSetApp('auto')">🚗 Carro / Automotriz</button>
       <button type="button" class="btn sm ${!isAuto?'primary':'ghost'}" style="flex:1" onclick="tintSetApp('arq')">🏢 Edificación / Arquitectónico</button>
     </div>
 
-    ${isAuto?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
+    ${!isSimple && isAuto?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
       <span style="font-size:11px;color:var(--muted2);width:100%;margin-bottom:2px">⚡ Presets de carro:</span>
       ${Object.keys(CAR_PRESETS).map(k=>`<button type="button" class="btn sm ghost ${t.preset===k?'primary':''}" onclick="tintSetPreset('${k}')">${CAR_PRESETS[k].name}</button>`).join('')}
     </div>`:''}
@@ -1421,6 +1429,10 @@ function tintModalHtml(){
         <select onchange="tintSetType(this.value)">${typeOpts}</select>
       </label>
       <div style="font-size:12px;color:var(--muted);margin-top:-6px">${TINT_TYPES[t.type].desc}</div>
+      <label class="f"><span>📝 Info del papel solicitado (marca, modelo, VLT %, color, serie…)</span>
+        <textarea rows="2" placeholder="Ej: Johnson Marathon Pro 20% VLT negro — serie Insignia&#10;(Las garantías 10 años papel / 1 año mano de obra se añaden automáticamente)" oninput="TINT_STATE.paperInfo=this.value">${esc(t.paperInfo||'')}</textarea>
+      </label>
+      <div style="font-size:11px;color:var(--muted);margin-top:-6px;line-height:1.4">✓ Al guardar se añade automáticamente: garantía 10 años en el papel · 1 año mano de obra · pago 50% al inicio / 50% al finalizar</div>
       <div class="row2">
         <label class="f"><span>Precio material / ft lineal</span>
           <input type="number" step="0.01" min="0" value="${t.material}" oninput="TINT_STATE.material=+this.value||0;tintRefresh()">
@@ -1434,18 +1446,26 @@ function tintModalHtml(){
       </label>
     </div>
 
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-      <b style="font-size:13px">Paneles / vidrios</b>
-      <button class="btn sm" onclick="tintAddPanel()">+ Agregar vidrio</button>
-    </div>
-    <div id="tintPanels" style="display:grid;gap:8px;max-height:40vh;overflow-y:auto">
-      ${t.panels.map((p,i)=>tintPanelRow(p,i)).join('')}
-    </div>
+    ${isSimple?`
+      <div style="padding:14px;background:var(--panel2);border:1px solid var(--cyan);border-radius:10px;margin-bottom:14px">
+        <label class="f" style="margin:0"><span style="font-size:13px;color:var(--cyan2);font-weight:600">📏 Cantidad total de pies lineales</span>
+          <input id="tintSimpleFt" type="number" step="0.01" min="0" value="${t.simpleFt||''}" oninput="TINT_STATE.simpleFt=+this.value||0;tintRefresh()" placeholder="Ej: 18.5" style="font-size:20px;font-weight:700;color:var(--cyan2);text-align:center;padding:10px">
+        </label>
+      </div>
+    `:`
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <b style="font-size:13px">Paneles / vidrios</b>
+        <button class="btn sm" onclick="tintAddPanel()">+ Agregar vidrio</button>
+      </div>
+      <div id="tintPanels" style="display:grid;gap:8px;max-height:40vh;overflow-y:auto">
+        ${t.panels.map((p,i)=>tintPanelRow(p,i)).join('')}
+      </div>
+    `}
 
     <div style="margin-top:14px;padding:12px;background:var(--panel2);border:1px solid var(--border);border-radius:10px">
       <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px"><span>Total ft lineal</span><b id="tintT_ft2">${totalFt.toFixed(2)} ft</b></div>
-      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px"><span>Material</span><b id="tintT_mat">${money(matTotal)}</b></div>
-      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px"><span>Instalación</span><b id="tintT_inst">${money(instTotal)}</b></div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px"><span>Material (${money(t.material)}/ft)</span><b id="tintT_mat">${money(matTotal)}</b></div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px"><span>Mano de obra (${money(t.install)}/ft${t.installFlat>0?' + $'+(+t.installFlat).toFixed(2):''})</span><b id="tintT_inst">${money(instTotal)}</b></div>
       <div style="display:flex;justify-content:space-between;font-size:16px;color:var(--cyan2);padding-top:6px;border-top:1px solid var(--border);margin-top:4px"><span><b>TOTAL</b></span><b id="tintT_grand">${money(grandTotal)}</b></div>
     </div>
 
@@ -1466,7 +1486,8 @@ function tintSetType(k){ const t=TINT_TYPES[k][TINT_STATE.app]; TINT_STATE.type=
 function tintAddPanel(){ const def=TINT_STATE.app==='arq'?8:3.5; TINT_STATE.panels.push({len:def,label:'Vidrio '+(TINT_STATE.panels.length+1)}); openModal(tintModalHtml()); }
 function tintDelPanel(i){ TINT_STATE.panels.splice(i,1); if(!TINT_STATE.panels.length) TINT_STATE.panels.push({len:TINT_STATE.app==='arq'?8:3.5,label:'Vidrio 1'}); openModal(tintModalHtml()); }
 function tintRefresh(){
-  const t=TINT_STATE; const totalFt=t.panels.reduce((s,p)=>s+(+p.len||0),0);
+  const t=TINT_STATE;
+  const totalFt = t.mode==='simple' ? (+t.simpleFt||0) : t.panels.reduce((s,p)=>s+(+p.len||0),0);
   const matTotal=totalFt*(+t.material||0);
   const instTotal=(+t.installFlat||0) + totalFt*(+t.install||0);
   const el=$('tintT_ft2'); if(el) el.textContent=totalFt.toFixed(2)+' ft';
@@ -1475,14 +1496,18 @@ function tintRefresh(){
   const g=$('tintT_grand'); if(g) g.textContent=money(matTotal+instTotal);
 }
 function tintAddToQuote(){
-  const t=TINT_STATE; const totalFt=t.panels.reduce((s,p)=>s+(+p.len||0),0);
-  if(totalFt<=0){ toast('Agrega al menos un vidrio con medida',true); return; }
+  const t=TINT_STATE;
+  const totalFt = t.mode==='simple' ? (+t.simpleFt||0) : t.panels.reduce((s,p)=>s+(+p.len||0),0);
+  if(totalFt<=0){ toast('Ingresa la cantidad de pies lineales',true); return; }
   const typeName=TINT_TYPES[t.type].name;
   const appLabel = t.app==='auto' ? (t.preset && CAR_PRESETS[t.preset] ? CAR_PRESETS[t.preset].name : 'Automotriz') : 'Edificación';
-  const panelsDesc=t.panels.filter(p=>+p.len).map(p=>`${p.label||'Vidrio'} ${(+p.len).toFixed(2)}ft`).join(', ');
+  const detail = t.mode==='simple'
+    ? `${totalFt.toFixed(2)} ft lineales`
+    : t.panels.filter(p=>+p.len).map(p=>`${p.label||'Vidrio'} ${(+p.len).toFixed(2)}ft`).join(', ');
+  const paperInfo = (t.paperInfo||'').trim();
   // Partida de material
   const mat=blankItem();
-  mat.description=`Papel ahumado ${typeName} — ${appLabel} — ${panelsDesc}`;
+  mat.description=`Papel ahumado ${typeName} — ${appLabel}${paperInfo?' — '+paperInfo:''} — ${detail} — Garantía 10 años en el papel`;
   mat.cost_type='materiales'; mat.category='otro';
   mat.unit='ft'; mat.qty=Math.round(totalFt*100)/100; mat.unit_price=+t.material||0; mat.is_area=0;
   S.editing.items.push(mat);
@@ -1491,17 +1516,27 @@ function tintAddToQuote(){
     const inst=blankItem();
     inst.cost_type='mano-obra'; inst.category='otro';
     if(+t.installFlat>0 && +t.install===0){
-      inst.description=`Instalación papel ahumado — cargo fijo`;
+      inst.description=`Instalación papel ahumado — cargo fijo — Garantía 1 año en mano de obra`;
       inst.unit='global'; inst.qty=1; inst.unit_price=+t.installFlat;
     }else{
-      inst.description=`Instalación papel ahumado — ${totalFt.toFixed(2)} ft lineal${+t.installFlat>0?' + cargo fijo $'+(+t.installFlat).toFixed(2):''}`;
+      inst.description=`Instalación papel ahumado — ${totalFt.toFixed(2)} ft lineal${+t.installFlat>0?' + cargo fijo $'+(+t.installFlat).toFixed(2):''} — Garantía 1 año en mano de obra`;
       inst.unit='ft'; inst.qty=Math.round(totalFt*100)/100;
       inst.unit_price=+t.install + ((+t.installFlat>0 && totalFt>0) ? (+t.installFlat)/totalFt : 0);
     }
     inst.is_area=0;
     S.editing.items.push(inst);
   }
-  closeModal(); renderItems(); toast('✅ Papel ahumado agregado a la cotización');
+  // Agregar términos de garantía y pago a las notas de la cotización (si no están ya)
+  const warranty='• Garantía: 10 años en el papel ahumado y 1 año en la mano de obra.';
+  const payment='• Forma de pago: 50% de adelanto al inicio del trabajo y 50% al finalizar.';
+  const notesEl=$('q_notes');
+  if(notesEl){
+    let notes=(notesEl.value||'').trim();
+    if(!notes.includes('Garantía: 10 años')) notes = (notes?notes+'\n':'') + warranty;
+    if(!notes.includes('50% de adelanto')) notes = notes + '\n' + payment;
+    notesEl.value=notes;
+  }
+  closeModal(); renderItems(); toast('✅ Papel ahumado agregado — garantía y pago 50/50 añadidos a notas');
 }
 
 function recalc(){
