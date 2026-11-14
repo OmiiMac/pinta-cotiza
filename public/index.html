@@ -1516,10 +1516,10 @@ function tintAddToQuote(){
     const inst=blankItem();
     inst.cost_type='mano-obra'; inst.category='otro';
     if(+t.installFlat>0 && +t.install===0){
-      inst.description=`Instalación papel ahumado — cargo fijo — Garantía 1 año en mano de obra`;
+      inst.description=`Instalación papel ahumado — Garantía 1 año en mano de obra`;
       inst.unit='global'; inst.qty=1; inst.unit_price=+t.installFlat;
     }else{
-      inst.description=`Instalación papel ahumado — ${totalFt.toFixed(2)} ft lineal${+t.installFlat>0?' + cargo fijo $'+(+t.installFlat).toFixed(2):''} — Garantía 1 año en mano de obra`;
+      inst.description=`Instalación papel ahumado — ${totalFt.toFixed(2)} ft lineal — Garantía 1 año en mano de obra`;
       inst.unit='ft'; inst.qty=Math.round(totalFt*100)/100;
       inst.unit_price=+t.install + ((+t.installFlat>0 && totalFt>0) ? (+t.installFlat)/totalFt : 0);
     }
