@@ -1288,7 +1288,7 @@ async function changeStatus(v){
 
 function renderItems(){
   const cats=[['pintura-interior','Pintura interior'],['pintura-exterior','Pintura exterior'],['gypsum','Gypsum'],['remodelacion','Remodelación'],['otro','Otro']];
-  const units=['m2','ft2','ml','und','global','día','hora','semana','viaje','cubo','juego','bolsa','rollo','litro','kg','mes'];
+  const units=['m2','ft','ft2','ml','und','global','día','hora','semana','viaje','cubo','juego','bolsa','rollo','litro','kg','mes'];
   $('itemsWrap').innerHTML = S.editing.items.map((it,i)=>`
     <div class="item-row ${it.is_area?'is-area':''}" data-i="${i}">
       <div class="top">
@@ -1359,36 +1359,36 @@ const TINT_TYPES={
   sunglaze: {name:'Sun Glaze / SunTek',       auto:{m:6,   i:3},   arq:{m:5.5,  i:2.8}, desc:'Buena relación calidad-precio, rechazo medio'},
   premium:  {name:'Premium (Llumar / 3M)',    auto:{m:14,  i:5},   arq:{m:12,   i:4},   desc:'Marca premium, garantía extendida'}
 };
-// Presets de autos: medidas aproximadas en ft de cada vidrio
+// Presets de autos: ft lineales aproximados por vidrio (según tamaño del rollo típico 20"-40")
 const CAR_PRESETS={
-  sedan:   {name:'Sedán (4 ventanas + luneta)', panels:[
-    {label:'Lateral del. izq.',w:2.8,h:1.4},{label:'Lateral del. der.',w:2.8,h:1.4},
-    {label:'Lateral tras. izq.',w:2.2,h:1.3},{label:'Lateral tras. der.',w:2.2,h:1.3},
-    {label:'Luneta trasera',w:4.5,h:1.6}]},
+  sedan:    {name:'Sedán (4 ventanas + luneta)', panels:[
+    {label:'Lateral del. izq.',  len:3.5},{label:'Lateral del. der.',  len:3.5},
+    {label:'Lateral tras. izq.', len:2.8},{label:'Lateral tras. der.', len:2.8},
+    {label:'Luneta trasera',     len:5.5}]},
   sedanFull:{name:'Sedán completo (incluye parabrisas)', panels:[
-    {label:'Parabrisas',w:5,h:1.6},
-    {label:'Lateral del. izq.',w:2.8,h:1.4},{label:'Lateral del. der.',w:2.8,h:1.4},
-    {label:'Lateral tras. izq.',w:2.2,h:1.3},{label:'Lateral tras. der.',w:2.2,h:1.3},
-    {label:'Luneta trasera',w:4.5,h:1.6}]},
-  suv:     {name:'SUV (6 vidrios + luneta)', panels:[
-    {label:'Lateral del. izq.',w:3,h:1.6},{label:'Lateral del. der.',w:3,h:1.6},
-    {label:'Lateral tras. izq.',w:2.6,h:1.5},{label:'Lateral tras. der.',w:2.6,h:1.5},
-    {label:'Ventanilla izq.',w:2,h:1.4},{label:'Ventanilla der.',w:2,h:1.4},
-    {label:'Luneta trasera',w:5,h:1.8}]},
-  pickup:  {name:'Pickup / Camión (2 vent. + luneta)', panels:[
-    {label:'Lateral izq.',w:3.2,h:1.5},{label:'Lateral der.',w:3.2,h:1.5},
-    {label:'Luneta trasera',w:5,h:1.4}]}
+    {label:'Parabrisas',         len:6.5},
+    {label:'Lateral del. izq.',  len:3.5},{label:'Lateral del. der.',  len:3.5},
+    {label:'Lateral tras. izq.', len:2.8},{label:'Lateral tras. der.', len:2.8},
+    {label:'Luneta trasera',     len:5.5}]},
+  suv:      {name:'SUV (6 vidrios + luneta)', panels:[
+    {label:'Lateral del. izq.',  len:4},{label:'Lateral del. der.',  len:4},
+    {label:'Lateral tras. izq.', len:3.5},{label:'Lateral tras. der.',len:3.5},
+    {label:'Ventanilla izq.',    len:2.5},{label:'Ventanilla der.',   len:2.5},
+    {label:'Luneta trasera',     len:6}]},
+  pickup:   {name:'Pickup / Camión (2 vent. + luneta)', panels:[
+    {label:'Lateral izq.',       len:4},{label:'Lateral der.',       len:4},
+    {label:'Luneta trasera',     len:5.5}]}
 };
-let TINT_STATE={app:'auto',panels:[{w:3,h:2,label:'Vidrio 1'}],type:'carbono',material:5,install:3,installFlat:0,preset:''};
+let TINT_STATE={app:'auto',panels:[{len:3.5,label:'Vidrio 1'}],type:'carbono',material:5,install:3,installFlat:0,preset:''};
 function openTintCalc(){
-  TINT_STATE={app:'auto',panels:[{w:2.8,h:1.4,label:'Vidrio 1'}],type:'carbono',material:TINT_TYPES.carbono.auto.m,install:TINT_TYPES.carbono.auto.i,installFlat:0,preset:''};
+  TINT_STATE={app:'auto',panels:[{len:3.5,label:'Vidrio 1'}],type:'carbono',material:TINT_TYPES.carbono.auto.m,install:TINT_TYPES.carbono.auto.i,installFlat:0,preset:''};
   openModal(tintModalHtml());
 }
 function tintSetApp(a){
   TINT_STATE.app=a; TINT_STATE.preset='';
   const t=TINT_TYPES[TINT_STATE.type][a]; TINT_STATE.material=t.m; TINT_STATE.install=t.i;
-  if(a==='arq') TINT_STATE.panels=[{w:3,h:5,label:'Ventana 1'}];
-  else TINT_STATE.panels=[{w:2.8,h:1.4,label:'Vidrio 1'}];
+  if(a==='arq') TINT_STATE.panels=[{len:8,label:'Ventana 1'}];
+  else TINT_STATE.panels=[{len:3.5,label:'Vidrio 1'}];
   openModal(tintModalHtml());
 }
 function tintSetPreset(k){
@@ -1397,14 +1397,14 @@ function tintSetPreset(k){
   openModal(tintModalHtml());
 }
 function tintModalHtml(){
-  const t=TINT_STATE; const totalFt2=t.panels.reduce((s,p)=>s+(+p.w||0)*(+p.h||0),0);
-  const matTotal=totalFt2*(+t.material||0);
-  const instTotal=(+t.installFlat||0) + totalFt2*(+t.install||0);
+  const t=TINT_STATE; const totalFt=t.panels.reduce((s,p)=>s+(+p.len||0),0);
+  const matTotal=totalFt*(+t.material||0);
+  const instTotal=(+t.installFlat||0) + totalFt*(+t.install||0);
   const grandTotal=matTotal+instTotal;
   const typeOpts=Object.keys(TINT_TYPES).map(k=>`<option value="${k}" ${k===t.type?'selected':''}>${TINT_TYPES[k].name}</option>`).join('');
   const isAuto=t.app==='auto';
   return `<h3>🪟 Cotizador de papel ahumado</h3>
-    <div style="font-size:12px;color:var(--muted);margin:-6px 0 12px">Medidas en pies (ft). Agrega cada vidrio/superficie.</div>
+    <div style="font-size:12px;color:var(--muted);margin:-6px 0 12px">Medidas en pies lineales (ft). Agrega cada vidrio/superficie.</div>
 
     <div style="display:flex;gap:8px;margin-bottom:14px;padding:4px;background:var(--panel2);border:1px solid var(--border);border-radius:10px">
       <button type="button" class="btn sm ${isAuto?'primary':'ghost'}" style="flex:1" onclick="tintSetApp('auto')">🚗 Carro / Automotriz</button>
@@ -1422,10 +1422,10 @@ function tintModalHtml(){
       </label>
       <div style="font-size:12px;color:var(--muted);margin-top:-6px">${TINT_TYPES[t.type].desc}</div>
       <div class="row2">
-        <label class="f"><span>Precio material / ft²</span>
+        <label class="f"><span>Precio material / ft lineal</span>
           <input type="number" step="0.01" min="0" value="${t.material}" oninput="TINT_STATE.material=+this.value||0;tintRefresh()">
         </label>
-        <label class="f"><span>Mano de obra / ft²</span>
+        <label class="f"><span>Mano de obra / ft lineal</span>
           <input type="number" step="0.01" min="0" value="${t.install}" oninput="TINT_STATE.install=+this.value||0;tintRefresh()">
         </label>
       </div>
@@ -1443,7 +1443,7 @@ function tintModalHtml(){
     </div>
 
     <div style="margin-top:14px;padding:12px;background:var(--panel2);border:1px solid var(--border);border-radius:10px">
-      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px"><span>Total ft²</span><b id="tintT_ft2">${totalFt2.toFixed(2)} ft²</b></div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px"><span>Total ft lineal</span><b id="tintT_ft2">${totalFt.toFixed(2)} ft</b></div>
       <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px"><span>Material</span><b id="tintT_mat">${money(matTotal)}</b></div>
       <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px"><span>Instalación</span><b id="tintT_inst">${money(instTotal)}</b></div>
       <div style="display:flex;justify-content:space-between;font-size:16px;color:var(--cyan2);padding-top:6px;border-top:1px solid var(--border);margin-top:4px"><span><b>TOTAL</b></span><b id="tintT_grand">${money(grandTotal)}</b></div>
@@ -1455,42 +1455,36 @@ function tintModalHtml(){
     </div>`;
 }
 function tintPanelRow(p,i){
-  const ft2=(+p.w||0)*(+p.h||0);
-  return `<div style="display:grid;grid-template-columns:1fr 70px 16px 70px 90px 36px;gap:6px;align-items:center;background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:8px">
+  return `<div style="display:grid;grid-template-columns:1fr 100px 60px 36px;gap:8px;align-items:center;background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:8px">
     <input placeholder="Vidrio ${i+1}" value="${esc(p.label||'')}" oninput="TINT_STATE.panels[${i}].label=this.value" style="min-width:0">
-    <input type="number" step="0.01" min="0" value="${p.w}" oninput="TINT_STATE.panels[${i}].w=+this.value||0;tintRefresh()" placeholder="ancho">
-    <span style="color:var(--muted);text-align:center">×</span>
-    <input type="number" step="0.01" min="0" value="${p.h}" oninput="TINT_STATE.panels[${i}].h=+this.value||0;tintRefresh()" placeholder="alto">
-    <span style="text-align:right;font-weight:600;color:var(--cyan2);font-size:13px">${ft2.toFixed(2)} ft²</span>
+    <input type="number" step="0.01" min="0" value="${p.len||0}" oninput="TINT_STATE.panels[${i}].len=+this.value||0;tintRefresh()" placeholder="ft lineal">
+    <span style="color:var(--muted);font-size:12px">ft lineal</span>
     <button class="btn sm danger" style="padding:4px 8px" onclick="tintDelPanel(${i})" title="Eliminar">✕</button>
   </div>`;
 }
 function tintSetType(k){ const t=TINT_TYPES[k][TINT_STATE.app]; TINT_STATE.type=k; TINT_STATE.material=t.m; TINT_STATE.install=t.i; openModal(tintModalHtml()); }
-function tintAddPanel(){ TINT_STATE.panels.push({w:3,h:2,label:'Vidrio '+(TINT_STATE.panels.length+1)}); openModal(tintModalHtml()); }
-function tintDelPanel(i){ TINT_STATE.panels.splice(i,1); if(!TINT_STATE.panels.length) TINT_STATE.panels.push({w:3,h:2,label:'Vidrio 1'}); openModal(tintModalHtml()); }
+function tintAddPanel(){ const def=TINT_STATE.app==='arq'?8:3.5; TINT_STATE.panels.push({len:def,label:'Vidrio '+(TINT_STATE.panels.length+1)}); openModal(tintModalHtml()); }
+function tintDelPanel(i){ TINT_STATE.panels.splice(i,1); if(!TINT_STATE.panels.length) TINT_STATE.panels.push({len:TINT_STATE.app==='arq'?8:3.5,label:'Vidrio 1'}); openModal(tintModalHtml()); }
 function tintRefresh(){
-  const t=TINT_STATE; const totalFt2=t.panels.reduce((s,p)=>s+(+p.w||0)*(+p.h||0),0);
-  const matTotal=totalFt2*(+t.material||0);
-  const instTotal=(+t.installFlat||0) + totalFt2*(+t.install||0);
-  const el=$('tintT_ft2'); if(el) el.textContent=totalFt2.toFixed(2)+' ft²';
+  const t=TINT_STATE; const totalFt=t.panels.reduce((s,p)=>s+(+p.len||0),0);
+  const matTotal=totalFt*(+t.material||0);
+  const instTotal=(+t.installFlat||0) + totalFt*(+t.install||0);
+  const el=$('tintT_ft2'); if(el) el.textContent=totalFt.toFixed(2)+' ft';
   const m=$('tintT_mat'); if(m) m.textContent=money(matTotal);
   const ins=$('tintT_inst'); if(ins) ins.textContent=money(instTotal);
   const g=$('tintT_grand'); if(g) g.textContent=money(matTotal+instTotal);
-  // actualizar ft² de cada panel sin re-renderizar el modal completo
-  const rows=document.querySelectorAll('#tintPanels > div');
-  t.panels.forEach((p,i)=>{ const sp=rows[i]?.children[4]; if(sp) sp.textContent=((+p.w||0)*(+p.h||0)).toFixed(2)+' ft²'; });
 }
 function tintAddToQuote(){
-  const t=TINT_STATE; const totalFt2=t.panels.reduce((s,p)=>s+(+p.w||0)*(+p.h||0),0);
-  if(totalFt2<=0){ toast('Agrega al menos un vidrio con medidas',true); return; }
+  const t=TINT_STATE; const totalFt=t.panels.reduce((s,p)=>s+(+p.len||0),0);
+  if(totalFt<=0){ toast('Agrega al menos un vidrio con medida',true); return; }
   const typeName=TINT_TYPES[t.type].name;
   const appLabel = t.app==='auto' ? (t.preset && CAR_PRESETS[t.preset] ? CAR_PRESETS[t.preset].name : 'Automotriz') : 'Edificación';
-  const panelsDesc=t.panels.filter(p=>(+p.w)&&(+p.h)).map(p=>`${p.label||'Vidrio'} ${(+p.w).toFixed(2)}×${(+p.h).toFixed(2)}ft`).join(', ');
+  const panelsDesc=t.panels.filter(p=>+p.len).map(p=>`${p.label||'Vidrio'} ${(+p.len).toFixed(2)}ft`).join(', ');
   // Partida de material
   const mat=blankItem();
   mat.description=`Papel ahumado ${typeName} — ${appLabel} — ${panelsDesc}`;
   mat.cost_type='materiales'; mat.category='otro';
-  mat.unit='ft2'; mat.qty=Math.round(totalFt2*100)/100; mat.unit_price=+t.material||0; mat.is_area=0;
+  mat.unit='ft'; mat.qty=Math.round(totalFt*100)/100; mat.unit_price=+t.material||0; mat.is_area=0;
   S.editing.items.push(mat);
   // Partida de instalación (si aplica)
   if((+t.install>0) || (+t.installFlat>0)){
@@ -1500,9 +1494,9 @@ function tintAddToQuote(){
       inst.description=`Instalación papel ahumado — cargo fijo`;
       inst.unit='global'; inst.qty=1; inst.unit_price=+t.installFlat;
     }else{
-      inst.description=`Instalación papel ahumado — ${totalFt2.toFixed(2)} ft²${+t.installFlat>0?' + cargo fijo $'+(+t.installFlat).toFixed(2):''}`;
-      inst.unit='ft2'; inst.qty=Math.round(totalFt2*100)/100;
-      inst.unit_price=+t.install + ((+t.installFlat>0 && totalFt2>0) ? (+t.installFlat)/totalFt2 : 0);
+      inst.description=`Instalación papel ahumado — ${totalFt.toFixed(2)} ft lineal${+t.installFlat>0?' + cargo fijo $'+(+t.installFlat).toFixed(2):''}`;
+      inst.unit='ft'; inst.qty=Math.round(totalFt*100)/100;
+      inst.unit_price=+t.install + ((+t.installFlat>0 && totalFt>0) ? (+t.installFlat)/totalFt : 0);
     }
     inst.is_area=0;
     S.editing.items.push(inst);
