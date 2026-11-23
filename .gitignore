@@ -4,3 +4,8 @@ data/
 *.db
 *.db-shm
 *.db-wal
+
+# Archivos temporales de pruebas locales
+*.txt
+!README*.txt
+data/
