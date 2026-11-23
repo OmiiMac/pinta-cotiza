@@ -255,10 +255,7 @@ header.topbar::after{
 .drawer-foot{padding:14px 20px;border-top:1px solid var(--border);font-size:11px;color:var(--muted2);letter-spacing:.08em;text-align:center;font-family:'JetBrains Mono',monospace}
 .drawer-foot span{color:var(--gold-soft)}
 
-nav.tabs{display:flex;gap:4px;margin-left:auto;flex-wrap:wrap}
-@media(max-width:760px){
-  nav.tabs{display:none}
-}
+nav.tabs{display:none !important}
 nav.tabs button{
   position:relative;
   background:transparent;border:1px solid transparent;color:var(--muted);
