@@ -1022,6 +1022,25 @@ app.post('/api/projects/:id/expenses', wrap((req, res) => {
   });
   res.json({ id });
 }));
+app.put('/api/expenses/:id', wrap((req, res) => {
+  const b = req.body || {};
+  const cur = db.prepare('SELECT * FROM project_expenses WHERE id=?').get(req.params.id);
+  if (!cur) return res.status(404).json({ error: 'Gasto no encontrado' });
+  const date = b.date || cur.date;
+  const cat = str(b.category) || cur.category;
+  const desc = str(b.description);
+  const amount = num(b.amount);
+  tx(() => {
+    db.prepare(`UPDATE project_expenses SET date=?, category=?, description=?, amount=?,
+      paid_to=?, receipt=?, notes=? WHERE id=?`)
+      .run(date, cat, desc, amount, str(b.paid_to), str(b.receipt), str(b.notes), cur.id);
+    // El espejo en caja se regenera con los datos nuevos
+    cashMirrorDelete(cur.id);
+    cashMirror({ originId: cur.id, date, type: 'gasto', category: cat, projectId: cur.project_id,
+                 description: desc || cat, amount, method: str(b.method) || 'efectivo' });
+  });
+  res.json({ ok: true });
+}));
 app.delete('/api/expenses/:id', wrap((req, res) => {
   tx(() => {
     db.prepare('DELETE FROM project_expenses WHERE id=?').run(req.params.id);
@@ -1046,6 +1065,24 @@ app.post('/api/projects/:id/payments', wrap((req, res) => {
                  description: 'Cobro ' + type, amount, method });
   });
   res.json({ id });
+}));
+app.put('/api/payments/:id', wrap((req, res) => {
+  const b = req.body || {};
+  const cur = db.prepare('SELECT * FROM project_payments WHERE id=?').get(req.params.id);
+  if (!cur) return res.status(404).json({ error: 'Cobro no encontrado' });
+  const date = b.date || cur.date;
+  const type = str(b.type) || cur.type;
+  const amount = num(b.amount);
+  const method = str(b.method) || cur.method;
+  tx(() => {
+    db.prepare(`UPDATE project_payments SET date=?, type=?, amount=?, method=?,
+      reference=?, notes=? WHERE id=?`)
+      .run(date, type, amount, method, str(b.reference), str(b.notes), cur.id);
+    cashMirrorDelete(cur.id);
+    cashMirror({ originId: cur.id, date, type: 'ingreso', category: 'cobro-' + type,
+                 projectId: cur.project_id, description: 'Cobro ' + type, amount, method });
+  });
+  res.json({ ok: true });
 }));
 app.delete('/api/payments/:id', wrap((req, res) => {
   tx(() => {

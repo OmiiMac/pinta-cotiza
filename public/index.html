@@ -4082,42 +4082,72 @@ async function delPhase(id){
   }catch(e){ toast(e.message,true); }
 }
 
+const PAYMENT_TYPES = [
+  ['adelanto','Adelanto'],['parcial','Pago parcial'],['final','Pago final'],
+  ['viaticos','Viáticos'],['extra','Extra / adicional']
+];
+const PAYMENT_TYPE_LBL = Object.fromEntries(PAYMENT_TYPES);
+
 function renderProjPayments(){
   const p = S.editingProject;
   if(!p.payments.length){ $('projPayments').innerHTML = '<div class="hint">Sin cobros registrados aún.</div>'; return; }
   $('projPayments').innerHTML = `<div class="tscroll"><table class="tbl"><thead><tr>
     <th>Fecha</th><th>Tipo</th><th>Método</th><th class="num">Monto</th><th></th></tr></thead><tbody>
     ${p.payments.map(x=>`<tr>
-      <td class="mono">${fmtDate(x.date)}</td><td>${esc(x.type)}</td><td>${esc(x.method||'')}</td>
+      <td class="mono">${fmtDate(x.date)}</td>
+      <td>${PAYMENT_TYPE_LBL[x.type]||esc(x.type)}${x.reference?`<div style="font-size:11px;color:var(--muted)">${esc(x.reference)}</div>`:''}</td>
+      <td>${esc(x.method||'')}</td>
       <td class="num mono" style="color:var(--green)">${money(x.amount)}</td>
-      <td class="num"><button class="btn sm ghost" onclick="delPayment('${x.id}')">✕</button></td>
+      <td class="num" style="white-space:nowrap">
+        <button class="btn sm ghost" onclick="editPayment('${x.id}')" title="Editar">✎</button>
+        <button class="btn sm ghost" onclick="delPayment('${x.id}')" title="Eliminar">✕</button>
+      </td>
     </tr>`).join('')}</tbody></table></div>`;
 }
-function addPayment(){
-  openModal(`<h3>Registrar cobro</h3>
+function addPayment(){ editPayment(null); }
+function editPayment(id){
+  const cur = id ? S.editingProject.payments.find(x=>x.id===id)
+                 : {date:new Date().toISOString().slice(0,10),type:'adelanto',amount:'',method:'efectivo',reference:''};
+  if(!cur){ toast('Cobro no encontrado',true); return; }
+  // Sugerencia del saldo pendiente al crear uno nuevo
+  const p = S.editingProject;
+  const pend = (p.contract_value||0)+(p.viaticos_value||0)-(p.total_payments||0);
+  openModal(`<h3>${id?'Editar':'Registrar'} cobro</h3>
+    ${!id&&pend>0?`<div class="hint" style="margin-bottom:10px">Saldo pendiente del proyecto: <b style="color:var(--cyan2)">${money(pend)}</b></div>`:''}
     <div class="form-grid">
-      <label class="f"><span>Fecha</span><input type="date" id="pay_date" value="${new Date().toISOString().slice(0,10)}"></label>
+      <label class="f"><span>Fecha</span><input type="date" id="pay_date" value="${(cur.date||'').slice(0,10)}"></label>
       <label class="f"><span>Tipo</span><select id="pay_type">
-        <option value="adelanto">Adelanto 50%</option><option value="parcial">Pago parcial</option>
-        <option value="final">Pago final</option><option value="viaticos">Viáticos</option><option value="extra">Extra</option>
+        ${PAYMENT_TYPES.map(([k,v])=>`<option value="${k}" ${cur.type===k?'selected':''}>${v}</option>`).join('')}
       </select></label>
-      <label class="f"><span>Monto ($)</span><input type="number" step="0.01" min="0" id="pay_amount"></label>
+      <label class="f"><span>Monto ($)</span><input type="number" step="0.01" min="0" id="pay_amount" value="${cur.amount||''}"></label>
       <label class="f"><span>Método</span><select id="pay_method">
-        <option value="efectivo">Efectivo</option><option value="yappy">Yappy</option>
-        <option value="transferencia">Transferencia</option><option value="cheque">Cheque</option>
+        ${['efectivo','yappy','transferencia','cheque','tarjeta'].map(m=>`<option value="${m}" ${cur.method===m?'selected':''}>${m.charAt(0).toUpperCase()+m.slice(1)}</option>`).join('')}
       </select></label>
-      <label class="f"><span>Referencia</span><input id="pay_ref" placeholder="Nº de cheque, transfer..."></label>
+      <label class="f"><span>Referencia</span><input id="pay_ref" value="${esc(cur.reference||'')}" placeholder="Nº de cheque, transfer..."></label>
     </div>
-    <div class="hint" style="margin-top:4px">Este cobro se registra también en Finanzas / Caja automáticamente.</div>
-    <div class="modal-actions"><button class="btn ghost" onclick="closeModal()">Cancelar</button>
-      <button class="btn green" onclick="saveNewPayment()">Registrar cobro</button></div>`);
+    <div class="hint" style="margin-top:4px">Se refleja automáticamente en Finanzas / Caja.</div>
+    <div class="modal-actions">
+      ${id?`<button class="btn ghost" style="color:#e55;border-color:#e55" onclick="delPaymentFromModal('${id}')">🗑 Eliminar</button><div style="flex:1"></div>`:''}
+      <button class="btn ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn green" onclick="savePayment('${id||''}')">${id?'Guardar cambios':'Registrar cobro'}</button>
+    </div>`);
 }
-async function saveNewPayment(){
+async function savePayment(id){
   const b={date:$('pay_date').value,type:$('pay_type').value,amount:Number($('pay_amount').value||0),
            method:$('pay_method').value,reference:$('pay_ref').value};
-  if(b.amount<=0){ toast('Monto debe ser mayor a cero',true); return; }
-  try{ await api.send('POST','/api/projects/'+S.editingProject.id+'/payments',b); closeModal();
-    S.editingProject = await api.get('/api/projects/'+S.editingProject.id); renderProjectEditor(); toast('Cobro registrado ✓');
+  if(b.amount<=0){ toast('El monto debe ser mayor a cero',true); return; }
+  try{
+    if(id) await api.send('PUT','/api/payments/'+id,b);
+    else await api.send('POST','/api/projects/'+S.editingProject.id+'/payments',b);
+    closeModal();
+    S.editingProject = await api.get('/api/projects/'+S.editingProject.id);
+    renderProjectEditor(); toast(id?'Cobro actualizado ✓':'Cobro registrado ✓');
+  }catch(e){ toast(e.message,true); }
+}
+async function delPaymentFromModal(id){
+  if(!confirm('¿Eliminar este cobro?')) return;
+  try{ await api.send('DELETE','/api/payments/'+id); closeModal();
+    S.editingProject = await api.get('/api/projects/'+S.editingProject.id); renderProjectEditor(); toast('Cobro eliminado');
   }catch(e){ toast(e.message,true); }
 }
 async function delPayment(id){
@@ -4127,46 +4157,79 @@ async function delPayment(id){
   }catch(e){ toast(e.message,true); }
 }
 
+const EXPENSE_CATS = [
+  ['mano-obra','👷 Mano de obra / personal'],
+  ['materiales','📦 Materiales'],
+  ['alquiler','🏗️ Alquiler de equipo'],
+  ['viaticos','🧳 Viáticos'],
+  ['combustible','⛽ Combustible'],
+  ['transporte','🚚 Transporte / flete'],
+  ['comida','🍽️ Comida'],
+  ['hospedaje','🏨 Hospedaje'],
+  ['herramienta','🔧 Herramientas'],
+  ['administrativo','📋 Administrativo'],
+  ['otros','• Otros']
+];
+const EXPENSE_CAT_LBL = Object.fromEntries(EXPENSE_CATS);
+
 function renderProjExpenses(){
   const p = S.editingProject;
   if(!p.expenses.length){ $('projExpenses').innerHTML = '<div class="hint">Sin gastos registrados aún.</div>'; return; }
   $('projExpenses').innerHTML = `<div class="tscroll"><table class="tbl"><thead><tr>
     <th>Fecha</th><th>Categoría</th><th>Descripción</th><th class="num">Monto</th><th></th></tr></thead><tbody>
     ${p.expenses.map(x=>`<tr>
-      <td class="mono">${fmtDate(x.date)}</td><td>${esc(x.category)}</td><td>${esc(x.description||'')}</td>
+      <td class="mono">${fmtDate(x.date)}</td>
+      <td style="white-space:nowrap">${EXPENSE_CAT_LBL[x.category]||esc(x.category)}</td>
+      <td>${esc(x.description||'')}${x.paid_to?`<div style="font-size:11px;color:var(--muted)">a ${esc(x.paid_to)}</div>`:''}</td>
       <td class="num mono" style="color:#e55">${money(x.amount)}</td>
-      <td class="num"><button class="btn sm ghost" onclick="delExpense('${x.id}')">✕</button></td>
+      <td class="num" style="white-space:nowrap">
+        <button class="btn sm ghost" onclick="editExpense('${x.id}')" title="Editar">✎</button>
+        <button class="btn sm ghost" onclick="delExpense('${x.id}')" title="Eliminar">✕</button>
+      </td>
     </tr>`).join('')}</tbody></table></div>`;
 }
-function addExpense(){
-  openModal(`<h3>Registrar gasto</h3>
+function addExpense(){ editExpense(null); }
+function editExpense(id){
+  const cur = id ? S.editingProject.expenses.find(x=>x.id===id)
+                 : {date:new Date().toISOString().slice(0,10),category:'materiales',description:'',amount:'',paid_to:'',method:'efectivo',notes:''};
+  if(!cur){ toast('Gasto no encontrado',true); return; }
+  openModal(`<h3>${id?'Editar':'Registrar'} gasto</h3>
     <div class="form-grid">
-      <label class="f"><span>Fecha</span><input type="date" id="exp_date" value="${new Date().toISOString().slice(0,10)}"></label>
+      <label class="f"><span>Fecha</span><input type="date" id="exp_date" value="${(cur.date||'').slice(0,10)}"></label>
       <label class="f"><span>Categoría</span><select id="exp_cat">
-        <option value="materiales">Materiales</option><option value="viaticos">Viáticos</option>
-        <option value="combustible">Combustible</option><option value="alquiler">Alquiler</option>
-        <option value="transporte">Transporte</option><option value="comida">Comida</option>
-        <option value="hospedaje">Hospedaje</option><option value="otros">Otros</option>
+        ${EXPENSE_CATS.map(([k,v])=>`<option value="${k}" ${cur.category===k?'selected':''}>${v}</option>`).join('')}
       </select></label>
-      <label class="f"><span>Descripción</span><input id="exp_desc" placeholder="Ej: Compra rollo Madico"></label>
-      <label class="f"><span>Monto ($)</span><input type="number" step="0.01" min="0" id="exp_amount"></label>
-      <label class="f"><span>Pagado a</span><input id="exp_paidto" placeholder="Proveedor / persona"></label>
+      <label class="f"><span>Descripción</span><input id="exp_desc" value="${esc(cur.description||'')}" placeholder="Ej: Compra rollo Madico"></label>
+      <label class="f"><span>Monto ($)</span><input type="number" step="0.01" min="0" id="exp_amount" value="${cur.amount||''}"></label>
+      <label class="f"><span>Pagado a</span><input id="exp_paidto" value="${esc(cur.paid_to||'')}" placeholder="Proveedor / persona"></label>
       <label class="f"><span>Método de pago</span><select id="exp_method">
-        <option value="efectivo">Efectivo</option><option value="yappy">Yappy</option>
-        <option value="banco">Transferencia</option><option value="tarjeta">Tarjeta</option>
+        ${['efectivo','yappy','banco','tarjeta','cheque'].map(m=>`<option value="${m}" ${cur.method===m?'selected':''}>${m.charAt(0).toUpperCase()+m.slice(1)}</option>`).join('')}
       </select></label>
     </div>
-    <div class="hint" style="margin-top:4px">Este gasto se registra también en Finanzas / Caja automáticamente.</div>
-    <div class="modal-actions"><button class="btn ghost" onclick="closeModal()">Cancelar</button>
-      <button class="btn primary" onclick="saveNewExpense()">Registrar gasto</button></div>`);
+    <div class="hint" style="margin-top:4px">Se refleja automáticamente en Finanzas / Caja.</div>
+    <div class="modal-actions">
+      ${id?`<button class="btn ghost" style="color:#e55;border-color:#e55" onclick="delExpenseFromModal('${id}')">🗑 Eliminar</button><div style="flex:1"></div>`:''}
+      <button class="btn ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn primary" onclick="saveExpense('${id||''}')">${id?'Guardar cambios':'Registrar gasto'}</button>
+    </div>`);
 }
-async function saveNewExpense(){
+async function saveExpense(id){
   const b={date:$('exp_date').value,category:$('exp_cat').value,description:$('exp_desc').value,
            amount:Number($('exp_amount').value||0),paid_to:$('exp_paidto').value,
            method:$('exp_method').value};
-  if(b.amount<=0){ toast('Monto debe ser mayor a cero',true); return; }
-  try{ await api.send('POST','/api/projects/'+S.editingProject.id+'/expenses',b); closeModal();
-    S.editingProject = await api.get('/api/projects/'+S.editingProject.id); renderProjectEditor(); toast('Gasto registrado ✓');
+  if(b.amount<=0){ toast('El monto debe ser mayor a cero',true); return; }
+  try{
+    if(id) await api.send('PUT','/api/expenses/'+id,b);
+    else await api.send('POST','/api/projects/'+S.editingProject.id+'/expenses',b);
+    closeModal();
+    S.editingProject = await api.get('/api/projects/'+S.editingProject.id);
+    renderProjectEditor(); toast(id?'Gasto actualizado ✓':'Gasto registrado ✓');
+  }catch(e){ toast(e.message,true); }
+}
+async function delExpenseFromModal(id){
+  if(!confirm('¿Eliminar este gasto?')) return;
+  try{ await api.send('DELETE','/api/expenses/'+id); closeModal();
+    S.editingProject = await api.get('/api/projects/'+S.editingProject.id); renderProjectEditor(); toast('Gasto eliminado');
   }catch(e){ toast(e.message,true); }
 }
 async function delExpense(id){
