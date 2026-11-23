@@ -550,6 +550,54 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
 .badge.rechazada{color:var(--danger);border-color:rgba(255,93,122,.5);background:rgba(255,93,122,.08)}
 .tag{display:inline-block;padding:3px 9px;border-radius:5px;font-size:10.5px;background:rgba(212,175,55,.08);border:1px solid var(--border-gold);color:var(--gold-soft);letter-spacing:.04em;font-weight:500}
 
+/* ---------- Alertas del dashboard ---------- */
+.alert-row{
+  position:relative;display:flex;align-items:center;gap:12px;
+  padding:11px 14px;margin-bottom:7px;border-radius:9px;cursor:pointer;
+  background:linear-gradient(90deg,rgba(20,15,54,.6) 0%,rgba(14,10,40,.35) 100%);
+  border:1px solid var(--border);
+  transition:all .18s cubic-bezier(.4,0,.2,1);
+}
+.alert-row::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:9px 0 0 9px}
+.alert-row.high::before{background:var(--danger);box-shadow:0 0 10px var(--danger)}
+.alert-row.mid::before{background:var(--warn);box-shadow:0 0 10px var(--warn)}
+.alert-row.low::before{background:var(--cyan);box-shadow:0 0 8px var(--cyan)}
+.alert-row:hover{border-color:var(--border2);transform:translateX(3px);background:rgba(0,212,255,.06)}
+.alert-row .a-ic{font-size:19px;width:34px;height:34px;flex:none;display:grid;place-items:center;
+  border-radius:8px;background:rgba(139,92,246,.12);border:1px solid var(--border)}
+.alert-row .a-body{flex:1;min-width:0}
+.alert-row .a-title{font-size:12.5px;font-weight:700;color:var(--text);letter-spacing:.01em}
+.alert-row .a-text{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:1px}
+.alert-row .a-amt{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:13.5px;white-space:nowrap}
+.alert-row.high .a-amt{color:var(--danger)}
+.alert-row.mid .a-amt{color:var(--warn)}
+.alert-row.low .a-amt{color:var(--cyan2)}
+.alert-empty{display:flex;align-items:center;gap:12px;padding:18px 16px;border-radius:10px;
+  background:linear-gradient(90deg,rgba(25,247,164,.1) 0%,transparent 100%);
+  border:1px solid rgba(25,247,164,.3);color:var(--green2);font-weight:600;font-size:13.5px}
+
+/* ---------- Tarjeta de proyecto activo ---------- */
+.proj-card{
+  position:relative;display:block;width:100%;text-align:left;
+  padding:14px 16px;margin-bottom:9px;border-radius:11px;cursor:pointer;
+  background:linear-gradient(135deg,rgba(24,18,62,.7) 0%,rgba(14,10,40,.5) 100%);
+  border:1px solid var(--border);font-family:inherit;color:var(--text);
+  transition:all .2s cubic-bezier(.4,0,.2,1);
+}
+.proj-card:hover{border-color:var(--border2);transform:translateY(-2px);box-shadow:0 10px 26px rgba(139,92,246,.22)}
+.proj-card .pc-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.proj-card .pc-name{font-weight:700;font-size:14px;flex:1;min-width:120px}
+.proj-card .pc-num{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--gold-soft)}
+.proj-card .pc-meta{display:flex;gap:16px;flex-wrap:wrap;font-size:11.5px;color:var(--muted);margin-bottom:9px}
+.proj-card .pc-meta b{color:var(--text);font-family:'JetBrains Mono',monospace}
+.bar{height:7px;border-radius:999px;background:rgba(139,92,246,.14);overflow:hidden;position:relative}
+.bar span{display:block;height:100%;border-radius:999px;transition:width .8s cubic-bezier(.2,.8,.2,1)}
+.bar.collect span{background:linear-gradient(90deg,var(--green2),var(--green));box-shadow:0 0 10px rgba(57,255,20,.5)}
+.bar.phases span{background:linear-gradient(90deg,var(--purple),var(--cyan));box-shadow:0 0 10px rgba(0,212,255,.5)}
+.bar-label{display:flex;justify-content:space-between;font-size:10.5px;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.1em;margin:8px 0 4px;font-weight:600}
+.bar-label b{color:var(--text);font-family:'JetBrains Mono',monospace;letter-spacing:0}
+
 /* ---------- Calendario (Agenda en Inicio) — alto contraste ---------- */
 #dashCalendarPanel{
   background:
@@ -1031,6 +1079,19 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
         <div class="ph"><h3 class="ttl">📨 Por dar seguimiento</h3></div>
         <div id="pendingList"></div>
       </div>
+    </div>
+
+    <!-- 🔔 ALERTAS -->
+    <div class="panel reveal" style="margin-top:14px" id="alertsPanel">
+      <div class="ph"><h3 class="ttl">🔔 Qué necesita tu atención</h3><span id="alertCount" class="tag"></span></div>
+      <div id="alertsList"></div>
+    </div>
+
+    <!-- 💼 PROYECTOS ACTIVOS -->
+    <div class="panel reveal" style="margin-top:14px" id="activeProjectsPanel">
+      <div class="ph"><h3 class="ttl">💼 Proyectos en marcha</h3>
+        <button class="btn sm ghost" onclick="go('projects')">Ver todos →</button></div>
+      <div id="activeProjectsList"></div>
     </div>
 
     <!-- 📅 CALENDARIO DE AGENDA -->
@@ -1678,9 +1739,73 @@ async function renderDash(){
   const recent=S.quotes.slice(0,6);
   $('recentQuotes').innerHTML = recent.length ? quoteTable(recent) : emptyBox('Aún no hay cotizaciones','Crea la primera con “Nueva cotización”.');
 
-  // Calendario y reportes integrados
+  // Alertas, proyectos activos, calendario y reportes
+  renderAlerts();
+  renderActiveProjects();
   renderDashCalendar();
   renderDashReports();
+}
+
+// === Alertas: qué necesita atención ===
+async function renderAlerts(){
+  let alerts=[];
+  try{ alerts = await api.get('/api/alerts'); }catch(e){}
+  const box=$('alertsList'); if(!box) return;
+  const cnt=$('alertCount');
+  if(!alerts.length){
+    if(cnt) cnt.textContent='';
+    box.innerHTML = `<div class="alert-empty">✅ Todo al día — no hay pendientes urgentes.</div>`;
+    return;
+  }
+  const high = alerts.filter(a=>a.level==='high').length;
+  if(cnt) cnt.textContent = alerts.length + (high?' · '+high+' urgente'+(high>1?'s':''):'');
+  box.innerHTML = alerts.slice(0,8).map(a=>{
+    const click = a.projectId ? `openProject('${a.projectId}')`
+                : a.quoteId   ? `openQuote('${a.quoteId}')`
+                : a.kind==='agenda' ? `go('dash')`
+                : a.kind==='stock' ? `go('inventory')`
+                : a.kind==='prospecto' ? `go('clients')` : '';
+    return `<div class="alert-row ${a.level}" ${click?`onclick="${click}"`:''}>
+      <span class="a-ic">${a.icon||'•'}</span>
+      <span class="a-body">
+        <span class="a-title">${esc(a.title)}</span>
+        <span class="a-text">${esc(a.text||'')}</span>
+      </span>
+      ${a.amount!=null?`<span class="a-amt">${money(a.amount)}</span>`:''}
+    </div>`;
+  }).join('') + (alerts.length>8?`<div class="hint" style="margin:6px 0 0">+${alerts.length-8} pendientes más</div>`:'');
+}
+
+// === Proyectos activos con barras de progreso ===
+async function renderActiveProjects(){
+  try{ S.projects = await api.get('/api/projects'); }catch(e){}
+  const box=$('activeProjectsList'); if(!box) return;
+  const active = S.projects.filter(p=>['planificacion','en_curso','pausado','terminado'].includes(p.status));
+  if(!active.length){
+    box.innerHTML = emptyBox('Sin proyectos en marcha','Convierte una cotización aprobada en proyecto.');
+    return;
+  }
+  box.innerHTML = active.slice(0,4).map(p=>{
+    const st = PROJECT_STATUS[p.status]||{lbl:p.status,color:'#888'};
+    const unit = p.measure_unit==='ft' ? 'ft lineal' : 'm²';
+    return `<button class="proj-card" onclick="openProject('${p.id}')">
+      <div class="pc-top">
+        <span class="pc-name">${esc(p.name)}</span>
+        <span class="badge" style="color:${st.color};border-color:${st.color}">${st.lbl}</span>
+        <span class="pc-num">${esc(p.number||'')}</span>
+      </div>
+      <div class="pc-meta">
+        <span>${esc(p.client_name||'Sin cliente')}</span>
+        <span>${p.measure_total||0} ${unit}</span>
+        <span>Valor <b>${money(p.total_value)}</b></span>
+        ${p.crew_due>0?`<span style="color:var(--warn)">Debes al equipo <b style="color:var(--warn)">${money(p.crew_due)}</b></span>`:''}
+      </div>
+      <div class="bar-label"><span>Cobrado</span><b>${money(p.paid_in)} de ${money(p.total_value)} · ${p.pct_collected}%</b></div>
+      <div class="bar collect"><span style="width:${Math.min(100,p.pct_collected)}%"></span></div>
+      <div class="bar-label"><span>Avance de fases</span><b>${p.phases_done}/${p.phases_total} · ${p.pct_phases}%</b></div>
+      <div class="bar phases"><span style="width:${Math.min(100,p.pct_phases)}%"></span></div>
+    </button>`;
+  }).join('');
 }
 function filterQuotes(status){ const el=$('quoteSearch'); if(el) el.value=status; go('quotes'); }
 function renderDonut(byStatus){
@@ -3697,18 +3822,22 @@ async function renderProjects(){
   if(q) list=list.filter(p=>[p.name,p.number,p.client_name,p.location].some(f=>String(f||'').toLowerCase().includes(q)));
   if(!list.length){ $('projectsList').innerHTML = emptyBox('Sin proyectos','Crea tu primer proyecto o convierte una cotización aprobada.'); return; }
   $('projectsList').innerHTML = `<div class="tscroll"><table class="tbl"><thead><tr>
-    <th>Nº</th><th>Proyecto</th><th>Cliente</th><th>Tipo</th><th>Ubicación</th>
-    <th>Estado</th><th class="num">Contrato</th><th></th>
+    <th>Nº</th><th>Proyecto</th><th>Cliente</th><th>Tipo</th>
+    <th>Estado</th><th class="num">Valor</th><th class="num">Cobrado</th>
+    <th class="num">Por cobrar</th><th class="num">Utilidad</th><th></th>
     </tr></thead><tbody>${list.map(p=>{
       const st = PROJECT_STATUS[p.status]||{lbl:p.status,color:'#888'};
       return `<tr>
         <td><span class="linklike mono" onclick="openProject('${p.id}')">${esc(p.number||'—')}</span></td>
-        <td><b>${esc(p.name)}</b></td>
+        <td><b>${esc(p.name)}</b>${p.location?`<div style="font-size:11px;color:var(--muted)">${esc(p.location)}</div>`:''}</td>
         <td>${esc(p.client_name||'—')}</td>
         <td>${PROJECT_TYPES[p.type]||p.type}</td>
-        <td>${esc(p.location||'—')}</td>
-        <td><span class="badge" style="color:${st.color};border-color:${st.color}">${st.lbl}</span></td>
-        <td class="num mono">${money(p.contract_value+p.viaticos_value)}</td>
+        <td><span class="badge" style="color:${st.color};border-color:${st.color}">${st.lbl}</span>
+            <div style="font-size:10px;color:var(--muted);margin-top:3px">${p.phases_done}/${p.phases_total} fases</div></td>
+        <td class="num mono">${money(p.total_value)}</td>
+        <td class="num mono" style="color:var(--green2)">${money(p.paid_in)}</td>
+        <td class="num mono" style="color:${p.balance_due>0?'var(--warn)':'var(--muted)'}">${money(p.balance_due)}</td>
+        <td class="num mono" style="color:${p.profit>=0?'var(--cyan2)':'var(--danger)'}"><b>${money(p.profit)}</b></td>
         <td class="num" style="white-space:nowrap">
           <button class="btn sm ghost" onclick="openProject('${p.id}')">Abrir</button>
           <button class="btn sm ghost" style="color:#e55;border-color:#e55" onclick="delProject('${p.id}','${esc(p.name)}')">🗑</button>
@@ -3931,6 +4060,7 @@ function addPayment(){
       </select></label>
       <label class="f"><span>Referencia</span><input id="pay_ref" placeholder="Nº de cheque, transfer..."></label>
     </div>
+    <div class="hint" style="margin-top:4px">Este cobro se registra también en Finanzas / Caja automáticamente.</div>
     <div class="modal-actions"><button class="btn ghost" onclick="closeModal()">Cancelar</button>
       <button class="btn green" onclick="saveNewPayment()">Registrar cobro</button></div>`);
 }
@@ -3973,13 +4103,19 @@ function addExpense(){
       <label class="f"><span>Descripción</span><input id="exp_desc" placeholder="Ej: Compra rollo Madico"></label>
       <label class="f"><span>Monto ($)</span><input type="number" step="0.01" min="0" id="exp_amount"></label>
       <label class="f"><span>Pagado a</span><input id="exp_paidto" placeholder="Proveedor / persona"></label>
+      <label class="f"><span>Método de pago</span><select id="exp_method">
+        <option value="efectivo">Efectivo</option><option value="yappy">Yappy</option>
+        <option value="banco">Transferencia</option><option value="tarjeta">Tarjeta</option>
+      </select></label>
     </div>
+    <div class="hint" style="margin-top:4px">Este gasto se registra también en Finanzas / Caja automáticamente.</div>
     <div class="modal-actions"><button class="btn ghost" onclick="closeModal()">Cancelar</button>
       <button class="btn primary" onclick="saveNewExpense()">Registrar gasto</button></div>`);
 }
 async function saveNewExpense(){
   const b={date:$('exp_date').value,category:$('exp_cat').value,description:$('exp_desc').value,
-           amount:Number($('exp_amount').value||0),paid_to:$('exp_paidto').value};
+           amount:Number($('exp_amount').value||0),paid_to:$('exp_paidto').value,
+           method:$('exp_method').value};
   if(b.amount<=0){ toast('Monto debe ser mayor a cero',true); return; }
   try{ await api.send('POST','/api/projects/'+S.editingProject.id+'/expenses',b); closeModal();
     S.editingProject = await api.get('/api/projects/'+S.editingProject.id); renderProjectEditor(); toast('Gasto registrado ✓');
@@ -4191,35 +4327,48 @@ async function renderFinPrices(){
   try{ if(typeof renderPrices==='function') renderPrices(); }catch(e){}
 }
 function renderFinReceivable(){
-  const porCobrar = S.projects.map(p=>{
-    const totalPaid = 0; // asumido desde el project detail
-    return {name:p.name, number:p.number, client:p.client_name,
-            total:(p.contract_value||0)+(p.viaticos_value||0), paid:0,
-            due:(p.contract_value||0)+(p.viaticos_value||0)};
-  }).filter(p=>p.due>0);
-  // Para mostrar con precisión real necesitaríamos cargar cada proyecto; mostramos lo contratado por ahora
-  let html = `<div class="hint" style="margin-bottom:12px">📥 Saldos pendientes de cobro por proyecto. Entra al proyecto para ver el detalle exacto y registrar cobros.</div>`;
-  if(!porCobrar.length){ html += emptyBox('Al día','No hay montos pendientes de cobro.'); }
+  const pend = S.projects.filter(p=>p.balance_due>0.5);
+  const totalDue = pend.reduce((s,p)=>s+p.balance_due,0);
+  let html = `<div class="stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:14px">
+    <div class="stat"><div class="l">Total por cobrar</div><div class="v" style="color:var(--warn)">${money(totalDue)}</div></div>
+    <div class="stat"><div class="l">Proyectos con saldo</div><div class="v">${pend.length}</div></div>
+  </div>`;
+  if(!pend.length){ html += `<div class="alert-empty">✅ Al día — todos los proyectos están cobrados.</div>`; }
   else html += `<div class="tscroll"><table class="tbl"><thead><tr>
-    <th>Proyecto</th><th>Cliente</th><th class="num">Contratado</th><th></th>
+    <th>Proyecto</th><th>Cliente</th><th class="num">Valor total</th>
+    <th class="num">Cobrado</th><th class="num">Falta</th><th>Avance</th><th></th>
     </tr></thead><tbody>
-    ${porCobrar.map(p=>`<tr>
+    ${pend.map(p=>`<tr>
       <td><b>${esc(p.name)}</b><div style="font-size:11px;color:var(--muted)">${esc(p.number)}</div></td>
-      <td>${esc(p.client||'—')}</td>
-      <td class="num mono">${money(p.total)}</td>
-      <td class="num"><button class="btn sm ghost" onclick="openProjectByNumber('${p.number}')">Abrir</button></td>
+      <td>${esc(p.client_name||'—')}</td>
+      <td class="num mono">${money(p.total_value)}</td>
+      <td class="num mono" style="color:var(--green2)">${money(p.paid_in)}</td>
+      <td class="num mono" style="color:var(--warn)"><b>${money(p.balance_due)}</b></td>
+      <td style="min-width:110px"><div class="bar collect"><span style="width:${Math.min(100,p.pct_collected)}%"></span></div>
+        <div style="font-size:10px;color:var(--muted);margin-top:3px">${p.pct_collected}%</div></td>
+      <td class="num"><button class="btn sm ghost" onclick="openProject('${p.id}')">Cobrar</button></td>
     </tr>`).join('')}</tbody></table></div>`;
   $('financesContent').innerHTML = html;
 }
 function renderFinPayable(){
-  let html = `<div class="hint" style="margin-bottom:12px">📤 Saldos pendientes de pagar al personal asignado a cada proyecto. Entra al proyecto para registrar pagos.</div>`;
-  if(!S.projects.length){ html += emptyBox('Sin proyectos','Agrega proyectos para ver pagos pendientes.'); }
+  const pend = S.projects.filter(p=>p.crew_due>0.5);
+  const totalDue = pend.reduce((s,p)=>s+p.crew_due,0);
+  let html = `<div class="stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:14px">
+    <div class="stat"><div class="l">Total por pagar al personal</div><div class="v" style="color:var(--danger)">${money(totalDue)}</div></div>
+    <div class="stat"><div class="l">Proyectos con deuda</div><div class="v">${pend.length}</div></div>
+  </div>`;
+  if(!pend.length){ html += `<div class="alert-empty">✅ Al día — no debes nada al personal.</div>`; }
   else html += `<div class="tscroll"><table class="tbl"><thead><tr>
-    <th>Proyecto</th><th>Cliente</th><th></th></tr></thead><tbody>
-    ${S.projects.map(p=>`<tr>
+    <th>Proyecto</th><th>Cliente</th><th class="num">Costo equipo</th>
+    <th class="num">Pagado</th><th class="num">Falta pagar</th><th></th>
+    </tr></thead><tbody>
+    ${pend.map(p=>`<tr>
       <td><b>${esc(p.name)}</b><div style="font-size:11px;color:var(--muted)">${esc(p.number)}</div></td>
       <td>${esc(p.client_name||'—')}</td>
-      <td class="num"><button class="btn sm ghost" onclick="openProject('${p.id}')">Abrir</button></td>
+      <td class="num mono">${money(p.crew_cost)}</td>
+      <td class="num mono" style="color:var(--green2)">${money(p.crew_paid)}</td>
+      <td class="num mono" style="color:var(--danger)"><b>${money(p.crew_due)}</b></td>
+      <td class="num"><button class="btn sm ghost" onclick="openProject('${p.id}')">Pagar</button></td>
     </tr>`).join('')}</tbody></table></div>`;
   $('financesContent').innerHTML = html;
 }

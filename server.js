@@ -752,10 +752,25 @@ function getProjectFull(id){
 
 app.get('/api/projects', wrap((req, res) => {
   const list = db.prepare(`
-    SELECT p.*, c.name AS client_name
+    SELECT p.*, c.name AS client_name,
+      COALESCE((SELECT SUM(amount) FROM project_payments WHERE project_id = p.id), 0)   AS paid_in,
+      COALESCE((SELECT SUM(amount) FROM project_expenses WHERE project_id = p.id), 0)   AS spent,
+      COALESCE((SELECT SUM(total_pay) FROM project_personnel WHERE project_id = p.id),0) AS crew_cost,
+      COALESCE((SELECT SUM(paid) FROM project_personnel WHERE project_id = p.id), 0)    AS crew_paid,
+      (SELECT COUNT(*) FROM project_phases WHERE project_id = p.id)                      AS phases_total,
+      (SELECT COUNT(*) FROM project_phases WHERE project_id = p.id AND status='completado') AS phases_done
     FROM projects p LEFT JOIN clients c ON c.id = p.client_id
     ORDER BY p.created_at DESC
   `).all();
+  // Campos derivados para que el frontend no tenga que recalcular
+  list.forEach(p => {
+    p.total_value  = r2(num(p.contract_value) + num(p.viaticos_value));
+    p.balance_due  = r2(p.total_value - num(p.paid_in));              // lo que falta cobrar
+    p.crew_due     = r2(num(p.crew_cost) - num(p.crew_paid));         // lo que falta pagar al personal
+    p.profit       = r2(num(p.paid_in) - num(p.spent) - num(p.crew_cost));
+    p.pct_collected = p.total_value > 0 ? Math.round(num(p.paid_in) / p.total_value * 100) : 0;
+    p.pct_phases    = p.phases_total > 0 ? Math.round(p.phases_done / p.phases_total * 100) : 0;
+  });
   res.json(list);
 }));
 
@@ -768,15 +783,19 @@ app.get('/api/projects/:id', wrap((req, res) => {
 app.post('/api/projects', wrap((req, res) => {
   const b = req.body || {};
   const id = uid();
-  db.prepare(`INSERT INTO projects
-    (id, number, name, client_id, quote_id, type, status, location, start_date, end_date,
-     measure_unit, measure_total, contract_value, viaticos_value, notes, created_at, updated_at)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
-    .run(id, b.number || projectNumber(), str(b.name).trim() || 'Proyecto sin nombre',
-         b.client_id || null, b.quote_id || null, str(b.type) || 'general',
-         str(b.status) || 'planificacion', str(b.location), b.start_date || null, b.end_date || null,
-         str(b.measure_unit) || 'm2', num(b.measure_total), num(b.contract_value), num(b.viaticos_value),
-         str(b.notes), now(), now());
+  const type = str(b.type) || 'general';
+  tx(() => {
+    db.prepare(`INSERT INTO projects
+      (id, number, name, client_id, quote_id, type, status, location, start_date, end_date,
+       measure_unit, measure_total, contract_value, viaticos_value, notes, created_at, updated_at)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+      .run(id, b.number || projectNumber(), str(b.name).trim() || 'Proyecto sin nombre',
+           b.client_id || null, b.quote_id || null, type,
+           str(b.status) || 'planificacion', str(b.location), b.start_date || null, b.end_date || null,
+           str(b.measure_unit) || 'm2', num(b.measure_total), num(b.contract_value), num(b.viaticos_value),
+           str(b.notes), now(), now());
+    if (b.seed_phases !== false) seedPhases(id, type);
+  });
   res.json(getProjectFull(id));
 }));
 
@@ -803,6 +822,63 @@ app.delete('/api/projects/:id', wrap((req, res) => {
   res.json({ ok: true });
 }));
 
+// Plantillas de fases por tipo de proyecto
+const PHASE_TEMPLATES = {
+  'papel-ahumado': [
+    'Firma de aceptación y cobro del adelanto',
+    'Compra de materiales y película',
+    'Alquiler de vehículo y traslado al sitio',
+    'Llegada, hospedaje y preparación logística',
+    'Inspección en obra y armado de equipos',
+    'Limpieza de vidrios e instalación',
+    'Limpieza final y entrega',
+    'Cobro del saldo y cierre'
+  ],
+  'pintura': [
+    'Firma de aceptación y cobro del adelanto',
+    'Compra de pintura y materiales',
+    'Preparación de superficies (lijado, resane)',
+    'Aplicación de sellador / primer',
+    'Primera mano de pintura',
+    'Segunda mano y retoques',
+    'Limpieza final y entrega',
+    'Cobro del saldo y cierre'
+  ],
+  'gypsum': [
+    'Firma de aceptación y cobro del adelanto',
+    'Compra de paneles y perfilería',
+    'Montaje de estructura metálica',
+    'Instalación de paneles',
+    'Masillado y acabado de juntas',
+    'Lijado y preparación para pintura',
+    'Limpieza final y entrega',
+    'Cobro del saldo y cierre'
+  ],
+  'remodelacion': [
+    'Firma de aceptación y cobro del adelanto',
+    'Compra de materiales',
+    'Demolición y preparación',
+    'Trabajos de obra gris',
+    'Acabados',
+    'Limpieza final y entrega',
+    'Cobro del saldo y cierre'
+  ],
+  'general': [
+    'Firma de aceptación y cobro del adelanto',
+    'Compra de materiales',
+    'Ejecución del trabajo',
+    'Limpieza final y entrega',
+    'Cobro del saldo y cierre'
+  ]
+};
+function seedPhases(projectId, type) {
+  const tpl = PHASE_TEMPLATES[type] || PHASE_TEMPLATES.general;
+  const ins = db.prepare(`INSERT INTO project_phases
+    (id, project_id, position, name, description, status, created_at)
+    VALUES (?,?,?,?,?,?,?)`);
+  tpl.forEach((name, i) => ins.run(uid(), projectId, i, name, '', 'pendiente', now()));
+}
+
 // Crear proyecto a partir de una cotización existente
 app.post('/api/projects/from-quote/:quoteId', wrap((req, res) => {
   const q = db.prepare('SELECT * FROM quotes WHERE id=?').get(req.params.quoteId);
@@ -811,18 +887,36 @@ app.post('/api/projects/from-quote/:quoteId', wrap((req, res) => {
   // detectar unidad y total de medida de las partidas
   const items = db.prepare('SELECT * FROM quote_items WHERE quote_id=?').all(q.id);
   let unit = 'm2', total = 0;
-  const ftItem = items.find(it => it.unit === 'ft');
-  if (ftItem) { unit = 'ft'; total = items.filter(it=>it.unit==='ft').reduce((s,it)=>s+num(it.qty),0); }
-  else { total = items.reduce((s,it)=>s+num(it.qty),0); }
+  const ftItems = items.filter(it => it.unit === 'ft');
+  if (ftItems.length) {
+    unit = 'ft';
+    // Las partidas de material e instalación repiten los mismos ft lineales:
+    // tomamos el máximo, no la suma, para no duplicar la medida.
+    total = Math.max(...ftItems.map(it => num(it.qty)));
+  } else {
+    total = items.filter(it => it.unit === 'm2').reduce((s,it)=>s+num(it.qty),0);
+  }
+  // Detectar tipo por las partidas si no viene en el body
+  let type = str(b.type);
+  if (!type) {
+    const txt = items.map(it => str(it.description)).join(' ').toLowerCase();
+    if (/ahumado|tint|madico|pel[ií]cula/.test(txt)) type = 'papel-ahumado';
+    else if (/gypsum|drywall|panel/.test(txt)) type = 'gypsum';
+    else if (/pintura|pintar/.test(txt)) type = 'pintura';
+    else type = 'general';
+  }
   const id = uid();
-  db.prepare(`INSERT INTO projects
-    (id, number, name, client_id, quote_id, type, status, location, measure_unit, measure_total,
-     contract_value, viaticos_value, notes, created_at, updated_at)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
-    .run(id, projectNumber(), str(q.title) || 'Proyecto desde '+q.number,
-         q.client_id, q.id, str(b.type) || 'general', 'planificacion',
-         str(b.location), unit, total, num(q.total),
-         num(b.viaticos_value), str(b.notes) || str(q.notes), now(), now());
+  tx(() => {
+    db.prepare(`INSERT INTO projects
+      (id, number, name, client_id, quote_id, type, status, location, measure_unit, measure_total,
+       contract_value, viaticos_value, notes, created_at, updated_at)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+      .run(id, projectNumber(), str(q.title) || 'Proyecto desde '+q.number,
+           q.client_id, q.id, type, 'planificacion',
+           str(b.location), unit, r2(total), num(q.total),
+           num(b.viaticos_value), str(b.notes) || str(q.notes), now(), now());
+    seedPhases(id, type);
+  });
   res.json(getProjectFull(id));
 }));
 
@@ -852,33 +946,65 @@ app.delete('/api/phases/:id', wrap((req, res) => {
   res.json({ ok: true });
 }));
 
+// --- Espejo en caja: todo movimiento de proyecto se refleja en Finanzas ---
+// origin_id guarda el id del gasto/cobro para poder borrar el espejo despues.
+function cashMirror({ originId, date, type, category, projectId, description, amount, method }) {
+  db.prepare(`INSERT INTO cash_movements
+    (id, date, type, category, project_id, description, amount, method, notes, created_at)
+    VALUES (?,?,?,?,?,?,?,?,?,?)`)
+    .run(uid(), date, type, category, projectId, description, amount, method, 'origin:' + originId, now());
+}
+function cashMirrorDelete(originId) {
+  db.prepare("DELETE FROM cash_movements WHERE notes = ?").run('origin:' + originId);
+}
+
 // Gastos
 app.post('/api/projects/:id/expenses', wrap((req, res) => {
   const b = req.body || {}; const id = uid();
-  db.prepare(`INSERT INTO project_expenses
-    (id, project_id, date, category, description, amount, paid_to, receipt, notes, created_at)
-    VALUES (?,?,?,?,?,?,?,?,?,?)`)
-    .run(id, req.params.id, b.date || now().slice(0,10), str(b.category) || 'otros',
-         str(b.description), num(b.amount), str(b.paid_to), str(b.receipt), str(b.notes), now());
+  const date = b.date || now().slice(0,10);
+  const cat = str(b.category) || 'otros';
+  const desc = str(b.description);
+  const amount = num(b.amount);
+  tx(() => {
+    db.prepare(`INSERT INTO project_expenses
+      (id, project_id, date, category, description, amount, paid_to, receipt, notes, created_at)
+      VALUES (?,?,?,?,?,?,?,?,?,?)`)
+      .run(id, req.params.id, date, cat, desc, amount, str(b.paid_to), str(b.receipt), str(b.notes), now());
+    cashMirror({ originId: id, date, type: 'gasto', category: cat, projectId: req.params.id,
+                 description: desc || cat, amount, method: str(b.method) || 'efectivo' });
+  });
   res.json({ id });
 }));
 app.delete('/api/expenses/:id', wrap((req, res) => {
-  db.prepare('DELETE FROM project_expenses WHERE id=?').run(req.params.id);
+  tx(() => {
+    db.prepare('DELETE FROM project_expenses WHERE id=?').run(req.params.id);
+    cashMirrorDelete(req.params.id);
+  });
   res.json({ ok: true });
 }));
 
 // Pagos recibidos
 app.post('/api/projects/:id/payments', wrap((req, res) => {
   const b = req.body || {}; const id = uid();
-  db.prepare(`INSERT INTO project_payments
-    (id, project_id, date, type, amount, method, reference, notes, created_at)
-    VALUES (?,?,?,?,?,?,?,?,?)`)
-    .run(id, req.params.id, b.date || now().slice(0,10), str(b.type) || 'parcial',
-         num(b.amount), str(b.method), str(b.reference), str(b.notes), now());
+  const date = b.date || now().slice(0,10);
+  const type = str(b.type) || 'parcial';
+  const amount = num(b.amount);
+  const method = str(b.method) || 'efectivo';
+  tx(() => {
+    db.prepare(`INSERT INTO project_payments
+      (id, project_id, date, type, amount, method, reference, notes, created_at)
+      VALUES (?,?,?,?,?,?,?,?,?)`)
+      .run(id, req.params.id, date, type, amount, method, str(b.reference), str(b.notes), now());
+    cashMirror({ originId: id, date, type: 'ingreso', category: 'cobro-' + type, projectId: req.params.id,
+                 description: 'Cobro ' + type, amount, method });
+  });
   res.json({ id });
 }));
 app.delete('/api/payments/:id', wrap((req, res) => {
-  db.prepare('DELETE FROM project_payments WHERE id=?').run(req.params.id);
+  tx(() => {
+    db.prepare('DELETE FROM project_payments WHERE id=?').run(req.params.id);
+    cashMirrorDelete(req.params.id);
+  });
   res.json({ ok: true });
 }));
 
@@ -1043,6 +1169,88 @@ app.put('/api/leads/:id', wrap((req, res) => {
 app.delete('/api/leads/:id', wrap((req, res) => {
   db.prepare('DELETE FROM leads WHERE id=?').run(req.params.id);
   res.json({ ok: true });
+}));
+
+// ---------- Alertas para el dashboard ----------
+app.get('/api/alerts', wrap((req, res) => {
+  const today = now().slice(0,10);
+  const alerts = [];
+
+  // Proyectos activos con saldo por cobrar
+  const porCobrar = db.prepare(`
+    SELECT p.id, p.number, p.name,
+      (p.contract_value + p.viaticos_value) AS total,
+      COALESCE((SELECT SUM(amount) FROM project_payments WHERE project_id = p.id),0) AS paid
+    FROM projects p
+    WHERE p.status IN ('planificacion','en_curso','pausado','terminado')
+  `).all().filter(p => (p.total - p.paid) > 0.5);
+  porCobrar.forEach(p => alerts.push({
+    kind: 'cobro', level: p.paid === 0 ? 'high' : 'mid',
+    icon: '\u{1F4B0}',
+    title: p.paid === 0 ? 'Sin cobrar aún' : 'Saldo pendiente de cobro',
+    text: p.name,
+    amount: r2(p.total - p.paid), projectId: p.id
+  }));
+
+  // Personal con pagos pendientes
+  const porPagar = db.prepare(`
+    SELECT p.id, p.name AS project_name, pe.name AS person,
+      pp.total_pay, pp.paid
+    FROM project_personnel pp
+    JOIN projects p ON p.id = pp.project_id
+    LEFT JOIN personnel pe ON pe.id = pp.personnel_id
+    WHERE (pp.total_pay - pp.paid) > 0.5
+  `).all();
+  porPagar.forEach(x => alerts.push({
+    kind: 'pago', level: 'mid', icon: '\u{1F477}',
+    title: 'Pago pendiente al personal',
+    text: `${x.person || 'Trabajador'} en ${x.project_name}`,
+    amount: r2(x.total_pay - x.paid), projectId: x.id
+  }));
+
+  // Eventos de agenda de hoy o vencidos sin hacer
+  const eventos = db.prepare(`SELECT * FROM agenda_events WHERE done = 0 AND date <= ? ORDER BY date`).all(today);
+  eventos.forEach(e => alerts.push({
+    kind: 'agenda', level: e.date < today ? 'high' : 'mid',
+    icon: e.date < today ? '\u{23F0}' : '\u{1F4C5}',
+    title: e.date < today ? 'Evento vencido' : 'Hoy en agenda',
+    text: `${e.title}${e.time ? ' · ' + e.time : ''}`,
+    date: e.date
+  }));
+
+  // Cotizaciones enviadas sin respuesta hace mas de 7 dias
+  const limite = new Date(Date.now() - 7*864e5).toISOString().slice(0,10);
+  const colgadas = db.prepare(`
+    SELECT q.id, q.number, q.total, q.issue_date, c.name AS client_name
+    FROM quotes q LEFT JOIN clients c ON c.id = q.client_id
+    WHERE q.status = 'enviada' AND q.issue_date <= ?
+  `).all(limite);
+  colgadas.forEach(q => alerts.push({
+    kind: 'seguimiento', level: 'mid', icon: '\u{1F4E8}',
+    title: 'Cotización sin respuesta',
+    text: `${q.number} · ${q.client_name || 'Sin cliente'}`,
+    amount: r2(q.total), quoteId: q.id
+  }));
+
+  // Inventario bajo minimo
+  const bajos = db.prepare('SELECT * FROM inventory_items WHERE min_stock > 0 AND stock <= min_stock').all();
+  bajos.forEach(i => alerts.push({
+    kind: 'stock', level: 'low', icon: '\u{1F4E6}',
+    title: 'Stock bajo',
+    text: `${i.name} — quedan ${i.stock} ${i.unit || ''}`
+  }));
+
+  // Prospectos con accion pendiente para hoy o vencida
+  const leads = db.prepare(`SELECT * FROM clients WHERE status IN ('prospecto') AND next_date IS NOT NULL AND next_date <= ?`).all(today);
+  leads.forEach(l => alerts.push({
+    kind: 'prospecto', level: 'mid', icon: '\u{1F3AF}',
+    title: 'Dar seguimiento',
+    text: `${l.name}${l.next_action ? ' — ' + l.next_action : ''}`
+  }));
+
+  const order = { high: 0, mid: 1, low: 2 };
+  alerts.sort((a,b) => order[a.level] - order[b.level]);
+  res.json(alerts);
 }));
 
 // ---------- Resumen / dashboard ----------
