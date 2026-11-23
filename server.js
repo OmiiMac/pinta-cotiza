@@ -316,6 +316,13 @@ ensureCol('quote_items', 'cost_type', "TEXT DEFAULT 'otro'");
 ensureCol('catalog',     'cost_type', "TEXT DEFAULT 'materiales'");
 ensureCol('catalog',     'image',     "TEXT");
 ensureCol('quotes',      'margin_pct', "REAL DEFAULT 0");
+// Unificación clientes + prospectos (v2.1)
+ensureCol('clients',     'status',      "TEXT DEFAULT 'cliente'");  // cliente, prospecto, ganado, perdido
+ensureCol('clients',     'source',      "TEXT");                    // whatsapp, referido, instagram, web, otro
+ensureCol('clients',     'interest',    "TEXT");
+ensureCol('clients',     'value_est',   "REAL DEFAULT 0");
+ensureCol('clients',     'next_action', "TEXT");
+ensureCol('clients',     'next_date',   "TEXT");
 
 // ---------- Valores por defecto (primera corrida) ----------
 const DEFAULT_META = {
@@ -490,8 +497,12 @@ app.post('/api/clients', wrap((req, res) => {
   const b = req.body || {};
   if (!str(b.name).trim()) return res.status(400).json({ error: 'El nombre es obligatorio' });
   const id = uid(), t = now();
-  db.prepare('INSERT INTO clients (id,name,phone,email,address,notes,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?)')
-    .run(id, str(b.name).trim(), str(b.phone), str(b.email), str(b.address), str(b.notes), t, t);
+  db.prepare(`INSERT INTO clients
+    (id,name,phone,email,address,notes,status,source,interest,value_est,next_action,next_date,created_at,updated_at)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+    .run(id, str(b.name).trim(), str(b.phone), str(b.email), str(b.address), str(b.notes),
+         str(b.status) || 'cliente', str(b.source), str(b.interest), num(b.value_est),
+         str(b.next_action), b.next_date || null, t, t);
   res.json(db.prepare('SELECT * FROM clients WHERE id=?').get(id));
 }));
 
@@ -499,8 +510,11 @@ app.put('/api/clients/:id', wrap((req, res) => {
   const b = req.body || {};
   const exists = db.prepare('SELECT id FROM clients WHERE id=?').get(req.params.id);
   if (!exists) return res.status(404).json({ error: 'Cliente no encontrado' });
-  db.prepare('UPDATE clients SET name=?, phone=?, email=?, address=?, notes=?, updated_at=? WHERE id=?')
-    .run(str(b.name).trim(), str(b.phone), str(b.email), str(b.address), str(b.notes), now(), req.params.id);
+  db.prepare(`UPDATE clients SET name=?, phone=?, email=?, address=?, notes=?,
+    status=?, source=?, interest=?, value_est=?, next_action=?, next_date=?, updated_at=? WHERE id=?`)
+    .run(str(b.name).trim(), str(b.phone), str(b.email), str(b.address), str(b.notes),
+         str(b.status) || 'cliente', str(b.source), str(b.interest), num(b.value_est),
+         str(b.next_action), b.next_date || null, now(), req.params.id);
   res.json(db.prepare('SELECT * FROM clients WHERE id=?').get(req.params.id));
 }));
 

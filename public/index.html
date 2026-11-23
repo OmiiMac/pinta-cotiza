@@ -269,6 +269,28 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
 .badge.rechazada{color:var(--danger);border-color:rgba(255,93,122,.5);background:rgba(255,93,122,.08)}
 .tag{display:inline-block;padding:3px 9px;border-radius:7px;font-size:11.5px;background:var(--panel2);border:1px solid var(--border);color:var(--muted)}
 
+/* ---------- Calendario (Agenda en Inicio) ---------- */
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;background:var(--border);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.cal-head{background:var(--panel2);text-align:center;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.09em;padding:7px 2px;font-weight:600}
+.cal-day{background:var(--panel2);min-height:76px;padding:6px 7px;position:relative;cursor:pointer;transition:background .15s}
+.cal-day:hover{background:var(--panel)}
+.cal-day.other{opacity:.35;background:var(--bg)}
+.cal-day.today{background:rgba(123,47,247,.08);border:1.5px solid var(--purple);border-radius:6px}
+.cal-day .dn{font-size:13px;font-weight:600;color:var(--text);margin-bottom:3px}
+.cal-day.today .dn{color:var(--purple)}
+.cal-day .ev{font-size:10.5px;background:rgba(0,212,255,.12);color:var(--cyan2);border-left:2px solid var(--cyan);padding:2px 5px;border-radius:3px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cal-day .ev.done{opacity:.5;text-decoration:line-through}
+.cal-day .ev.past{background:rgba(229,85,85,.12);color:#ff8585;border-left-color:#e55}
+.cal-day .ev.cobro{background:rgba(25,247,164,.12);color:var(--green);border-left-color:var(--green)}
+.cal-day .ev.instalacion{background:rgba(255,207,90,.12);color:#ffcf5a;border-left-color:#ffcf5a}
+.cal-day .more{font-size:10px;color:var(--muted);padding:1px 4px}
+@media(max-width:620px){
+  .cal-day{min-height:54px;padding:4px 4px}
+  .cal-day .ev{font-size:9px;padding:1px 3px}
+  .cal-day .dn{font-size:11px}
+  .cal-head{font-size:9px}
+}
+
 /* ---------- Items editor ---------- */
 .item-row{border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px;background:var(--panel2)}
 .item-row .top{display:flex;gap:10px;align-items:flex-start}
@@ -577,11 +599,6 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
     <button data-v="finances">💰 Finanzas</button>
     <button data-v="catalog">📦 Catálogo</button>
     <button data-v="inventory">🏷️ Inventario</button>
-    <button data-v="agenda">📅 Agenda</button>
-    <button data-v="plans">📐 Planos</button>
-    <button data-v="leads">🎯 Prospectos</button>
-    <button data-v="reports">📊 Reportes</button>
-    <button data-v="prices">💲 Precios</button>
     <button data-v="settings">⚙️ Ajustes</button>
   </nav>
 </header>
@@ -606,10 +623,10 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
           </div>
         </div>
         <div class="quick-row">
+          <button class="qa2" onclick="newProject()">💼 Proyecto</button>
           <button class="qa2" onclick="newQuote()">🧾 Cotización</button>
-          <button class="qa2" onclick="newPlan()">📐 Plano</button>
           <button class="qa2" onclick="editClient()">👤 Cliente</button>
-          <button class="qa2" onclick="go('catalog')">🔎 Catálogo</button>
+          <button class="qa2" onclick="editAgenda()">📅 Agendar</button>
         </div>
       </div>
 
@@ -633,14 +650,37 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
         <div id="pendingList"></div>
       </div>
     </div>
+
+    <!-- 📅 CALENDARIO DE AGENDA -->
+    <div class="panel reveal" style="margin-top:14px" id="dashCalendarPanel">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+        <h3 class="ttl" style="margin:0">📅 Calendario del mes</h3>
+        <button class="btn sm ghost" onclick="calPrevMonth()">←</button>
+        <b id="calMonthLabel" style="min-width:160px;text-align:center;letter-spacing:.02em"></b>
+        <button class="btn sm ghost" onclick="calNextMonth()">→</button>
+        <div class="spacer"></div>
+        <button class="btn sm ghost" onclick="calToday()">Hoy</button>
+        <button class="btn sm primary" onclick="editAgenda()">+ Evento</button>
+      </div>
+      <div id="dashCalendar"></div>
+      <div id="dashUpcoming" style="margin-top:14px"></div>
+    </div>
+
+    <!-- 📊 REPORTES INTEGRADOS -->
+    <div class="panel reveal" style="margin-top:14px">
+      <div class="ph"><h3 class="ttl">📊 Resumen empresarial</h3></div>
+      <div id="dashReports"></div>
+    </div>
   </section>
 
   <!-- QUOTES LIST -->
   <section class="view" id="view-quotes">
-    <div class="page-head"><h1>Cotizaciones</h1>
+    <div class="page-head"><h1>🧾 Cotizaciones</h1>
       <div class="spacer"></div>
       <input id="quoteSearch" placeholder="Buscar..." style="width:200px" oninput="renderQuotes()">
-      <button class="btn primary" onclick="newQuote()">+ Nueva</button>
+      <button class="btn ghost sm" onclick="go('plans')">📐 Planos</button>
+      <button class="btn ghost sm" onclick="newPlan()">+ Plano</button>
+      <button class="btn primary" onclick="newQuote()">+ Nueva cotización</button>
     </div>
     <div class="panel"><div id="quotesList"></div></div>
   </section>
@@ -875,11 +915,25 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
     </div>
   </section>
 
-  <!-- CLIENTS -->
+  <!-- CLIENTS (unifica clientes y prospectos) -->
   <section class="view" id="view-clients">
-    <div class="page-head"><h1>Clientes</h1><div class="spacer"></div>
-      <button class="btn primary" onclick="editClient()">+ Nuevo cliente</button></div>
-    <div class="panel"><div id="clientsList"></div></div>
+    <div class="page-head">
+      <h1>👥 Clientes y Prospectos</h1>
+      <input id="clientSearch" placeholder="🔎 Buscar..." oninput="renderClients()">
+      <div class="spacer"></div>
+      <button class="btn ghost sm" onclick="editClient(null,'prospecto')">+ Prospecto</button>
+      <button class="btn primary" onclick="editClient()">+ Cliente</button>
+    </div>
+    <div class="panel">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px" id="clientFilters">
+        <button class="btn sm primary" onclick="filterClients('all')">Todos</button>
+        <button class="btn sm ghost" onclick="filterClients('cliente')">👥 Clientes activos</button>
+        <button class="btn sm ghost" onclick="filterClients('prospecto')">🎯 Prospectos</button>
+        <button class="btn sm ghost" onclick="filterClients('ganado')">🎉 Ganados</button>
+        <button class="btn sm ghost" onclick="filterClients('perdido')">❌ Perdidos</button>
+      </div>
+      <div id="clientsList"></div>
+    </div>
   </section>
 
   <!-- CATALOG -->
@@ -996,17 +1050,24 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
     </div>
   </section>
 
-  <!-- ============== FINANZAS ============== -->
+  <!-- ============== FINANZAS (incluye Precios) ============== -->
   <section class="view" id="view-finances">
     <div class="page-head">
-      <h1>💰 Finanzas / Caja</h1>
+      <h1>💰 Finanzas</h1>
       <div class="spacer"></div>
       <button class="btn ghost sm" onclick="addCashMovement('gasto')">− Gasto</button>
       <button class="btn green" onclick="addCashMovement('ingreso')">+ Ingreso</button>
     </div>
+    <div class="panel" style="margin-bottom:12px">
+      <div style="display:flex;gap:8px;flex-wrap:wrap" id="financeTabs">
+        <button class="btn sm primary" onclick="finTab('cash')">💵 Movimientos de caja</button>
+        <button class="btn sm ghost" onclick="finTab('prices')">💲 Precios de referencia</button>
+        <button class="btn sm ghost" onclick="finTab('receivable')">📥 Por cobrar</button>
+        <button class="btn sm ghost" onclick="finTab('payable')">📤 Por pagar</button>
+      </div>
+    </div>
     <div class="panel" id="financesPanel">
-      <div id="financesSummary"></div>
-      <div id="financesList" style="margin-top:14px"></div>
+      <div id="financesContent"></div>
     </div>
   </section>
 
@@ -1129,7 +1190,7 @@ function go(v){
   if(v==='plans') renderPlans();
   if(v==='clients') renderClients();
   if(v==='catalog') renderCatalog();
-  if(v==='prices') renderPrices();
+  if(v==='prices'){ S.finTab='prices'; return go('finances'); }
   if(v==='settings') fillSettings();
   if(v==='projects') renderProjects();
   if(v==='personnel') renderPersonnel();
@@ -1188,7 +1249,7 @@ async function renderDash(){
   let hoy=new Date().toLocaleDateString('es-PA',{weekday:'long',day:'numeric',month:'long'}); hoy=hoy.charAt(0).toUpperCase()+hoy.slice(1);
   const nEdit=(S.editing&&S.editing.items)?S.editing.items.filter(it=>it.description||it.unit_price).length:0;
   $('dashHello').innerHTML=`<h1><span class="live-dot"></span>${saludo}</h1>
-    <div class="sub">Centro de Cotización · MESHIPPING // TERMINAL</div>
+    <div class="sub">Sistema Empresarial · MESHIPPING // TERMINAL</div>
     ${nEdit?`<button class="btn primary continue-btn" style="margin-top:13px" onclick="openCurrentQuote()">▶ Continuar cotización · ${nEdit} ${nEdit===1?'partida':'partidas'}</button>`:''}`;
   const dd=$('dashDate'); if(dd) dd.textContent=hoy;
   startClock();
@@ -1219,6 +1280,10 @@ async function renderDash(){
   // Últimas
   const recent=S.quotes.slice(0,6);
   $('recentQuotes').innerHTML = recent.length ? quoteTable(recent) : emptyBox('Aún no hay cotizaciones','Crea la primera con “Nueva cotización”.');
+
+  // Calendario y reportes integrados
+  renderDashCalendar();
+  renderDashReports();
 }
 function filterQuotes(status){ const el=$('quoteSearch'); if(el) el.value=status; go('quotes'); }
 function renderDonut(byStatus){
@@ -1900,36 +1965,98 @@ function printQuote(){
 }
 
 // ============================================================
-// CLIENTS
+// CLIENTS + PROSPECTOS (unificados)
 // ============================================================
+const CLIENT_STATUS = {
+  prospecto:{lbl:'🎯 Prospecto', color:'#886cff'},
+  cliente:  {lbl:'👥 Cliente',    color:'#19f7a4'},
+  ganado:   {lbl:'🎉 Ganado',     color:'#39ff14'},
+  perdido:  {lbl:'❌ Perdido',    color:'#e55'}
+};
+S.clientFilter = 'all';
+function filterClients(f){
+  S.clientFilter = f;
+  document.querySelectorAll('#clientFilters button').forEach((b,i)=>{
+    const vals = ['all','cliente','prospecto','ganado','perdido'];
+    b.className = 'btn sm '+(vals[i]===f?'primary':'ghost');
+  });
+  renderClients();
+}
 async function renderClients(){
   try{ S.clients = await api.get('/api/clients'); }catch(e){}
-  $('clientsList').innerHTML = S.clients.length ? `<div class="tscroll"><table class="tbl"><thead><tr>
-    <th>Nombre</th><th>Teléfono</th><th>Email</th><th>Dirección</th><th></th></tr></thead><tbody>
-    ${S.clients.map(c=>`<tr>
-      <td><b>${esc(c.name)}</b></td><td>${esc(c.phone||'')}</td><td>${esc(c.email||'')}</td><td>${esc(c.address||'')}</td>
-      <td class="num"><button class="btn sm ghost" onclick='editClient(${JSON.stringify(c.id)})'>Editar</button>
-      <button class="btn sm danger" onclick='delClient(${JSON.stringify(c.id)})'>✕</button></td>
-    </tr>`).join('')}</tbody></table></div>` : emptyBox('Sin clientes','Agrega tu primer cliente.');
+  const q = ($('clientSearch')?.value||'').toLowerCase();
+  let list = S.clients;
+  if(S.clientFilter && S.clientFilter!=='all') list = list.filter(c=>(c.status||'cliente')===S.clientFilter);
+  if(q) list = list.filter(c=>[c.name,c.phone,c.email,c.interest].some(f=>String(f||'').toLowerCase().includes(q)));
+  if(!list.length){ $('clientsList').innerHTML = emptyBox('Sin registros','Agrega un cliente o prospecto.'); return; }
+  $('clientsList').innerHTML = `<div class="tscroll"><table class="tbl"><thead><tr>
+    <th>Nombre</th><th>Estado</th><th>Teléfono</th><th>Email</th><th>Interés / Fuente</th><th class="num">Valor est.</th><th>Próx. acción</th><th></th>
+    </tr></thead><tbody>
+    ${list.map(c=>{
+      const st = CLIENT_STATUS[c.status||'cliente'] || CLIENT_STATUS.cliente;
+      const isProspecto = (c.status||'cliente')!=='cliente' && (c.status||'cliente')!=='ganado';
+      return `<tr>
+        <td><b>${esc(c.name)}</b>${c.address?`<div style="font-size:11px;color:var(--muted)">${esc(c.address)}</div>`:''}</td>
+        <td><span class="badge" style="color:${st.color};border-color:${st.color}">${st.lbl}</span></td>
+        <td class="mono">${esc(c.phone||'')}</td>
+        <td>${esc(c.email||'')}</td>
+        <td>${esc(c.interest||'')}${c.source?` <span class="tag">${esc(c.source)}</span>`:''}</td>
+        <td class="num mono">${isProspecto&&c.value_est>0?money(c.value_est):'—'}</td>
+        <td>${esc(c.next_action||'')} ${c.next_date?('<div style="font-size:11px;color:var(--muted)">'+fmtDate(c.next_date)+'</div>'):''}</td>
+        <td class="num" style="white-space:nowrap">
+          <button class="btn sm ghost" onclick='editClient(${JSON.stringify(c.id)})'>✎</button>
+          <button class="btn sm ghost" style="color:#e55;border-color:#e55" onclick='delClient(${JSON.stringify(c.id)})'>🗑</button>
+        </td></tr>`;
+    }).join('')}</tbody></table></div>`;
 }
-function editClient(id){
-  const c = id ? S.clients.find(x=>x.id===id) : {name:'',phone:'',email:'',address:'',notes:''};
-  openModal(`<h3>${id?'Editar':'Nuevo'} cliente</h3>
+function editClient(id, defaultStatus){
+  const c = id ? S.clients.find(x=>x.id===id) : {name:'',phone:'',email:'',address:'',notes:'',status:defaultStatus||'cliente',source:'',interest:'',value_est:0,next_action:'',next_date:''};
+  const isProspecto = (c.status||'cliente')!=='cliente';
+  openModal(`<h3>${id?'Editar':'Nuevo'} ${isProspecto?'prospecto':'cliente'}</h3>
+    <label class="f"><span>Estado</span>
+      <select id="c_status" onchange="toggleProspectoFields()">
+        ${Object.entries(CLIENT_STATUS).map(([k,v])=>`<option value="${k}" ${c.status===k?'selected':''}>${v.lbl}</option>`).join('')}
+      </select>
+    </label>
     <label class="f"><span>Nombre *</span><input id="c_name" value="${esc(c.name)}"></label>
     <div class="row2">
       <label class="f"><span>Teléfono</span><input id="c_phone" value="${esc(c.phone||'')}"></label>
       <label class="f"><span>Email</span><input id="c_email" value="${esc(c.email||'')}"></label>
     </div>
     <label class="f"><span>Dirección</span><input id="c_address" value="${esc(c.address||'')}"></label>
-    <label class="f"><span>Notas</span><textarea id="c_notes">${esc(c.notes||'')}</textarea></label>
+
+    <div id="prospectoFields" style="margin-top:8px;padding:12px;background:var(--panel2);border-radius:10px;border:1px dashed var(--border2)">
+      <div style="font-size:11px;color:var(--cyan2);margin-bottom:8px;letter-spacing:.08em;text-transform:uppercase">🎯 Seguimiento de prospecto</div>
+      <div class="form-grid">
+        <label class="f"><span>Fuente</span><select id="c_source">
+          ${['','whatsapp','referido','instagram','facebook','web','feria','otro'].map(s=>`<option ${c.source===s?'selected':''}>${s||'—'}</option>`).join('')}
+        </select></label>
+        <label class="f"><span>Interés / qué quiere</span><input id="c_interest" value="${esc(c.interest||'')}" placeholder="Ej: Pintura exterior 3 ambientes"></label>
+        <label class="f"><span>Valor estimado ($)</span><input type="number" step="0.01" min="0" id="c_value" value="${c.value_est||0}"></label>
+        <label class="f"><span>Próxima acción</span><input id="c_action" value="${esc(c.next_action||'')}" placeholder="Visita, llamar..."></label>
+        <label class="f"><span>Fecha próx. acción</span><input type="date" id="c_nextdate" value="${(c.next_date||'').slice(0,10)}"></label>
+      </div>
+    </div>
+
+    <label class="f" style="margin-top:8px"><span>Notas</span><textarea id="c_notes">${esc(c.notes||'')}</textarea></label>
     <div class="modal-actions"><button class="btn ghost" onclick="closeModal()">Cancelar</button>
       <button class="btn green" onclick="saveClient(${JSON.stringify(id||null)})">Guardar</button></div>`);
+  toggleProspectoFields();
+}
+function toggleProspectoFields(){
+  const status = $('c_status')?.value || 'cliente';
+  const show = status !== 'cliente';
+  const el = $('prospectoFields');
+  if(el) el.style.display = show ? '' : 'none';
 }
 async function saveClient(id){
-  const b={name:$('c_name').value,phone:$('c_phone').value,email:$('c_email').value,address:$('c_address').value,notes:$('c_notes').value};
+  const b={name:$('c_name').value,phone:$('c_phone').value,email:$('c_email').value,
+           address:$('c_address').value,notes:$('c_notes').value,
+           status:$('c_status').value,source:$('c_source').value,interest:$('c_interest').value,
+           value_est:Number($('c_value').value||0),next_action:$('c_action').value,next_date:$('c_nextdate').value};
   if(!b.name.trim()){ toast('El nombre es obligatorio',true); return; }
   try{ id?await api.send('PUT','/api/clients/'+id,b):await api.send('POST','/api/clients',b);
-    S.clients=await api.get('/api/clients'); closeModal(); renderClients(); toast('Cliente guardado ✓'); }
+    S.clients=await api.get('/api/clients'); closeModal(); renderClients(); toast('Guardado ✓'); }
   catch(e){ toast(e.message,true); }
 }
 async function delClient(id){
@@ -3019,6 +3146,132 @@ $('overlay').addEventListener('click',e=>{ if(e.target.id==='overlay') closeModa
 // ============================================================
 S.projects=[]; S.personnel=[]; S.cash=[]; S.inventory=[]; S.agenda=[]; S.leads=[];
 S.editingProject=null;
+S.calCursor = new Date(); S.calCursor.setDate(1); // 1er día del mes actual
+
+// ============================================================
+// DASHBOARD: Calendario de agenda + mini reportes
+// ============================================================
+function calPrevMonth(){ S.calCursor.setMonth(S.calCursor.getMonth()-1); renderDashCalendar(); }
+function calNextMonth(){ S.calCursor.setMonth(S.calCursor.getMonth()+1); renderDashCalendar(); }
+function calToday(){ S.calCursor = new Date(); S.calCursor.setDate(1); renderDashCalendar(); }
+
+async function renderDashCalendar(){
+  try{ S.agenda = await api.get('/api/agenda'); }catch(e){}
+  const d = new Date(S.calCursor);
+  const year = d.getFullYear(), month = d.getMonth();
+  const monthName = d.toLocaleDateString('es-PA',{month:'long',year:'numeric'});
+  $('calMonthLabel').textContent = monthName.charAt(0).toUpperCase()+monthName.slice(1);
+
+  // 1er día del mes y día de la semana (0=domingo → cambiamos a 0=lunes)
+  const first = new Date(year,month,1);
+  const firstDow = (first.getDay()+6)%7; // 0=lunes
+  const daysInMonth = new Date(year,month+1,0).getDate();
+  const prevMonthDays = new Date(year,month,0).getDate();
+  const today = new Date().toISOString().slice(0,10);
+
+  // Agrupa eventos por fecha
+  const byDate = {};
+  (S.agenda||[]).forEach(e=>{ if(!e.date) return; const k=(e.date||'').slice(0,10); (byDate[k]=byDate[k]||[]).push(e); });
+
+  // Construye matriz 6×7
+  const headDays = ['L','M','X','J','V','S','D'];
+  let html = '<div class="cal-grid">'+headDays.map(h=>`<div class="cal-head">${h}</div>`).join('');
+  // días del mes anterior
+  for(let i=firstDow-1;i>=0;i--){
+    html += `<div class="cal-day other"><div class="dn">${prevMonthDays-i}</div></div>`;
+  }
+  // días del mes
+  for(let day=1;day<=daysInMonth;day++){
+    const iso = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    const evs = byDate[iso]||[];
+    const isToday = iso===today;
+    let evHtml = evs.slice(0,3).map(e=>{
+      const cls = e.done?'done':(iso<today?'past':'');
+      const kind = e.type==='cobro'?'cobro':e.type==='instalacion'?'instalacion':'';
+      return `<div class="ev ${cls} ${kind}" title="${esc(e.title)}" onclick="event.stopPropagation(); editAgendaExisting('${e.id}')">${esc(e.title)}</div>`;
+    }).join('');
+    if(evs.length>3) evHtml += `<div class="more">+${evs.length-3} más</div>`;
+    html += `<div class="cal-day ${isToday?'today':''}" onclick="editAgendaForDate('${iso}')">
+      <div class="dn">${day}</div>${evHtml}</div>`;
+  }
+  // relleno del próximo mes
+  const used = firstDow + daysInMonth;
+  const remaining = (7 - (used%7))%7;
+  for(let i=1;i<=remaining;i++){
+    html += `<div class="cal-day other"><div class="dn">${i}</div></div>`;
+  }
+  html += '</div>';
+  $('dashCalendar').innerHTML = html;
+
+  // Próximos eventos (lista)
+  const upcoming = (S.agenda||[]).filter(e=>e.date>=today && !e.done).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,5);
+  if(upcoming.length){
+    $('dashUpcoming').innerHTML = `<div style="font-size:12px;color:var(--muted);margin-bottom:6px;letter-spacing:.08em;text-transform:uppercase">Próximos eventos</div>
+      ${upcoming.map(e=>`<div class="pend-item" onclick="editAgendaExisting('${e.id}')">
+        <span class="mono" style="color:var(--cyan2);min-width:72px">${fmtDate(e.date)}</span>
+        <span style="color:var(--muted);min-width:90px">${AGENDA_TYPES[e.type]||e.type}</span>
+        <span style="color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(e.title)}</span>
+      </div>`).join('')}`;
+  } else { $('dashUpcoming').innerHTML = ''; }
+}
+
+function editAgendaForDate(iso){ editAgenda(); setTimeout(()=>{ const d=$('ag_date'); if(d) d.value=iso; },30); }
+function editAgendaExisting(id){
+  const e = S.agenda.find(x=>x.id===id); if(!e) return;
+  const projOpts = '<option value="">—</option>'+S.projects.map(p=>`<option value="${p.id}" ${p.id===e.project_id?'selected':''}>${esc(p.number)} · ${esc(p.name)}</option>`).join('');
+  openModal(`<h3>Editar evento</h3>
+    <div class="form-grid">
+      <label class="f"><span>Fecha</span><input type="date" id="ag_date" value="${(e.date||'').slice(0,10)}"></label>
+      <label class="f"><span>Hora</span><input type="time" id="ag_time" value="${esc(e.time||'')}"></label>
+      <label class="f"><span>Tipo</span><select id="ag_type">${Object.entries(AGENDA_TYPES).map(([k,v])=>`<option value="${k}" ${e.type===k?'selected':''}>${v}</option>`).join('')}</select></label>
+      <label class="f"><span>Título</span><input id="ag_title" value="${esc(e.title||'')}"></label>
+      <label class="f"><span>Proyecto</span><select id="ag_project">${projOpts}</select></label>
+      <label class="f"><span>Ubicación</span><input id="ag_loc" value="${esc(e.location||'')}"></label>
+    </div>
+    <label class="switch" style="margin-top:12px"><input type="checkbox" id="ag_done" ${e.done?'checked':''}> Marcado como hecho</label>
+    <label class="f"><span>Notas</span><textarea id="ag_notes" rows="2">${esc(e.notes||'')}</textarea></label>
+    <div class="modal-actions">
+      <button class="btn ghost" style="color:#e55;border-color:#e55" onclick="delAgendaFromModal('${e.id}')">🗑 Eliminar</button>
+      <div style="flex:1"></div>
+      <button class="btn ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn primary" onclick="updateAgendaEvent('${e.id}')">Guardar</button>
+    </div>`);
+}
+async function updateAgendaEvent(id){
+  const b={date:$('ag_date').value,time:$('ag_time').value,type:$('ag_type').value,
+           title:$('ag_title').value,project_id:$('ag_project').value||null,
+           location:$('ag_loc').value,notes:$('ag_notes').value,done:$('ag_done').checked?1:0};
+  try{ await api.send('PUT','/api/agenda/'+id,b); closeModal(); toast('Evento actualizado ✓'); renderDashCalendar(); }
+  catch(e){ toast(e.message,true); }
+}
+async function delAgendaFromModal(id){
+  if(!confirm('¿Eliminar este evento?')) return;
+  try{ await api.send('DELETE','/api/agenda/'+id); closeModal(); renderDashCalendar(); }catch(e){ toast(e.message,true); }
+}
+
+async function renderDashReports(){
+  try{
+    const [proj, cash, pers] = await Promise.all([
+      api.get('/api/projects'), api.get('/api/cash'), api.get('/api/personnel')
+    ]);
+    const ingresos = cash.filter(x=>x.type==='ingreso').reduce((s,x)=>s+x.amount,0);
+    const gastos = cash.filter(x=>x.type==='gasto').reduce((s,x)=>s+x.amount,0);
+    const active = proj.filter(p=>['planificacion','en_curso','pausado'].includes(p.status)).length;
+    const done = proj.filter(p=>['terminado','cobrado','cerrado'].includes(p.status)).length;
+    const contractSum = proj.reduce((s,p)=>s+(p.contract_value||0)+(p.viaticos_value||0),0);
+    const personCount = pers.filter(p=>p.active).length;
+    $('dashReports').innerHTML = `<div class="stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">
+      <div class="stat"><div class="l">Proyectos totales</div><div class="v">${proj.length}</div></div>
+      <div class="stat"><div class="l">Activos</div><div class="v" style="color:var(--cyan2)">${active}</div></div>
+      <div class="stat"><div class="l">Terminados</div><div class="v" style="color:var(--green)">${done}</div></div>
+      <div class="stat"><div class="l">Contratado total</div><div class="v sm">${money(contractSum)}</div></div>
+      <div class="stat"><div class="l">Ingresos en caja</div><div class="v sm" style="color:var(--green)">${money(ingresos)}</div></div>
+      <div class="stat"><div class="l">Gastos en caja</div><div class="v sm" style="color:#e55">${money(gastos)}</div></div>
+      <div class="stat"><div class="l">Saldo neto</div><div class="v sm" style="color:${ingresos-gastos>=0?'var(--cyan2)':'#e55'}">${money(ingresos-gastos)}</div></div>
+      <div class="stat"><div class="l">Personal activo</div><div class="v">${personCount}</div></div>
+    </div>`;
+  }catch(e){ $('dashReports').innerHTML = '<div class="hint">Cargando resumen...</div>'; }
+}
 
 const PROJECT_STATUS = {
   planificacion:{lbl:'Planificación',color:'#886cff'},
@@ -3491,21 +3744,37 @@ async function delPersonnel(id,name){
 }
 
 // ============================================================
-// FINANZAS / CAJA
+// FINANZAS / CAJA + PRECIOS
 // ============================================================
+S.finTab = 'cash';
+function finTab(t){
+  S.finTab = t;
+  document.querySelectorAll('#financeTabs button').forEach((b,i)=>{
+    const vals = ['cash','prices','receivable','payable'];
+    b.className = 'btn sm '+(vals[i]===t?'primary':'ghost');
+  });
+  renderFinances();
+}
 async function renderFinances(){
   try{ S.cash = await api.get('/api/cash'); }catch(e){}
+  try{ S.projects = await api.get('/api/projects'); }catch(e){}
+  if(S.finTab==='cash') renderFinCash();
+  else if(S.finTab==='prices') renderFinPrices();
+  else if(S.finTab==='receivable') renderFinReceivable();
+  else if(S.finTab==='payable') renderFinPayable();
+}
+function renderFinCash(){
   const ingresos = S.cash.filter(x=>x.type==='ingreso').reduce((s,x)=>s+x.amount,0);
   const gastos = S.cash.filter(x=>x.type==='gasto').reduce((s,x)=>s+x.amount,0);
   const saldo = ingresos - gastos;
-  $('financesSummary').innerHTML = `<div class="stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px">
+  let html = `<div class="stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:14px">
     <div class="stat"><div class="l">Ingresos totales</div><div class="v" style="color:var(--green)">${money(ingresos)}</div></div>
     <div class="stat"><div class="l">Gastos totales</div><div class="v" style="color:#e55">${money(gastos)}</div></div>
     <div class="stat"><div class="l">Saldo neto</div><div class="v" style="color:${saldo>=0?'var(--cyan2)':'#e55'}">${money(saldo)}</div></div>
     <div class="stat"><div class="l">Movimientos</div><div class="v">${S.cash.length}</div></div>
   </div>`;
-  if(!S.cash.length){ $('financesList').innerHTML = emptyBox('Sin movimientos','Registra tus primeros ingresos o gastos.'); return; }
-  $('financesList').innerHTML = `<div class="tscroll"><table class="tbl"><thead><tr>
+  if(!S.cash.length){ html += emptyBox('Sin movimientos','Registra tus primeros ingresos o gastos.'); }
+  else html += `<div class="tscroll"><table class="tbl"><thead><tr>
     <th>Fecha</th><th>Tipo</th><th>Categoría</th><th>Descripción</th><th>Proyecto</th><th>Método</th><th class="num">Monto</th><th></th></tr></thead><tbody>
     ${S.cash.map(x=>`<tr>
       <td class="mono">${fmtDate(x.date)}</td>
@@ -3515,6 +3784,50 @@ async function renderFinances(){
       <td class="num mono" style="color:${x.type==='ingreso'?'var(--green)':'#e55'}">${money(x.amount)}</td>
       <td class="num"><button class="btn sm ghost" onclick="delCash('${x.id}')">✕</button></td>
     </tr>`).join('')}</tbody></table></div>`;
+  $('financesContent').innerHTML = html;
+}
+async function renderFinPrices(){
+  // Elimina cualquier #pricesContent duplicado (p.ej. de view-prices legacy)
+  document.querySelectorAll('#pricesContent').forEach(el=>{ if(!el.closest('#financesContent')) el.remove(); });
+  $('financesContent').innerHTML = `<div class="hint" style="margin-bottom:14px">💲 Precios de referencia de mercado Panamá (actualizado 2026). Toca <b>"Usar"</b> para aplicarlo a tus cotizaciones. Son <b>costos</b> — tu ganancia va encima.</div>
+    <div id="pricesContent"></div>`;
+  try{ if(typeof renderPrices==='function') renderPrices(); }catch(e){}
+}
+function renderFinReceivable(){
+  const porCobrar = S.projects.map(p=>{
+    const totalPaid = 0; // asumido desde el project detail
+    return {name:p.name, number:p.number, client:p.client_name,
+            total:(p.contract_value||0)+(p.viaticos_value||0), paid:0,
+            due:(p.contract_value||0)+(p.viaticos_value||0)};
+  }).filter(p=>p.due>0);
+  // Para mostrar con precisión real necesitaríamos cargar cada proyecto; mostramos lo contratado por ahora
+  let html = `<div class="hint" style="margin-bottom:12px">📥 Saldos pendientes de cobro por proyecto. Entra al proyecto para ver el detalle exacto y registrar cobros.</div>`;
+  if(!porCobrar.length){ html += emptyBox('Al día','No hay montos pendientes de cobro.'); }
+  else html += `<div class="tscroll"><table class="tbl"><thead><tr>
+    <th>Proyecto</th><th>Cliente</th><th class="num">Contratado</th><th></th>
+    </tr></thead><tbody>
+    ${porCobrar.map(p=>`<tr>
+      <td><b>${esc(p.name)}</b><div style="font-size:11px;color:var(--muted)">${esc(p.number)}</div></td>
+      <td>${esc(p.client||'—')}</td>
+      <td class="num mono">${money(p.total)}</td>
+      <td class="num"><button class="btn sm ghost" onclick="openProjectByNumber('${p.number}')">Abrir</button></td>
+    </tr>`).join('')}</tbody></table></div>`;
+  $('financesContent').innerHTML = html;
+}
+function renderFinPayable(){
+  let html = `<div class="hint" style="margin-bottom:12px">📤 Saldos pendientes de pagar al personal asignado a cada proyecto. Entra al proyecto para registrar pagos.</div>`;
+  if(!S.projects.length){ html += emptyBox('Sin proyectos','Agrega proyectos para ver pagos pendientes.'); }
+  else html += `<div class="tscroll"><table class="tbl"><thead><tr>
+    <th>Proyecto</th><th>Cliente</th><th></th></tr></thead><tbody>
+    ${S.projects.map(p=>`<tr>
+      <td><b>${esc(p.name)}</b><div style="font-size:11px;color:var(--muted)">${esc(p.number)}</div></td>
+      <td>${esc(p.client_name||'—')}</td>
+      <td class="num"><button class="btn sm ghost" onclick="openProject('${p.id}')">Abrir</button></td>
+    </tr>`).join('')}</tbody></table></div>`;
+  $('financesContent').innerHTML = html;
+}
+function openProjectByNumber(num){
+  const p = S.projects.find(x=>x.number===num); if(p) openProject(p.id);
 }
 
 function addCashMovement(type){
