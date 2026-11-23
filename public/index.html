@@ -566,16 +566,23 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
       <b>MESHIPPING</b><span>// TERMINAL</span>
     </div>
     <div class="brand-div"></div>
-    <div class="brand-sub">Centro de<br><b>Cotización</b></div>
+    <div class="brand-sub">Sistema<br><b>Empresarial</b></div>
   </div>
   <nav class="tabs" id="tabs">
-    <button data-v="dash" class="active">Inicio</button>
-    <button data-v="quotes">Cotizaciones</button>
-    <button data-v="plans">Planos</button>
-    <button data-v="clients">Clientes</button>
-    <button data-v="catalog">Catálogo</button>
-    <button data-v="prices">Precios</button>
-    <button data-v="settings">Ajustes</button>
+    <button data-v="dash" class="active">🏠 Inicio</button>
+    <button data-v="projects">💼 Proyectos</button>
+    <button data-v="quotes">🧾 Cotizaciones</button>
+    <button data-v="clients">👥 Clientes</button>
+    <button data-v="personnel">👷 Personal</button>
+    <button data-v="finances">💰 Finanzas</button>
+    <button data-v="catalog">📦 Catálogo</button>
+    <button data-v="inventory">🏷️ Inventario</button>
+    <button data-v="agenda">📅 Agenda</button>
+    <button data-v="plans">📐 Planos</button>
+    <button data-v="leads">🎯 Prospectos</button>
+    <button data-v="reports">📊 Reportes</button>
+    <button data-v="prices">💲 Precios</button>
+    <button data-v="settings">⚙️ Ajustes</button>
   </nav>
 </header>
 
@@ -949,6 +956,99 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
       <label class="f"><span>Qué incluye el Premium</span><textarea id="s_nivel_premium_desc"></textarea></label>
     </div>
   </section>
+
+  <!-- ============== PROYECTOS ============== -->
+  <section class="view" id="view-projects">
+    <div class="page-head">
+      <h1>💼 Proyectos</h1>
+      <input id="projectSearch" placeholder="🔎 Buscar proyecto, cliente, ubicación..." oninput="renderProjects()">
+      <div class="spacer"></div>
+      <button class="btn ghost sm" onclick="openProjectFromQuote()">+ Desde cotización</button>
+      <button class="btn primary" onclick="newProject()">+ Nuevo proyecto</button>
+    </div>
+    <div class="panel">
+      <div id="projectsList"></div>
+    </div>
+  </section>
+
+  <!-- Project editor -->
+  <section class="view" id="view-projecteditor">
+    <div class="page-head">
+      <button class="btn ghost sm" onclick="go('projects')">← Volver</button>
+      <h1 id="projEditorTitle">Proyecto</h1>
+      <span id="projEditorNumber" class="tag mono"></span>
+      <div class="spacer"></div>
+      <button class="btn green" onclick="saveProject()">Guardar</button>
+    </div>
+    <div id="projectEditor"></div>
+  </section>
+
+  <!-- ============== PERSONAL ============== -->
+  <section class="view" id="view-personnel">
+    <div class="page-head">
+      <h1>👷 Personal / Contratistas</h1>
+      <input id="personnelSearch" placeholder="🔎 Buscar por nombre o especialidad..." oninput="renderPersonnel()">
+      <div class="spacer"></div>
+      <button class="btn primary" onclick="editPersonnel()">+ Agregar persona</button>
+    </div>
+    <div class="panel">
+      <div id="personnelList"></div>
+    </div>
+  </section>
+
+  <!-- ============== FINANZAS ============== -->
+  <section class="view" id="view-finances">
+    <div class="page-head">
+      <h1>💰 Finanzas / Caja</h1>
+      <div class="spacer"></div>
+      <button class="btn ghost sm" onclick="addCashMovement('gasto')">− Gasto</button>
+      <button class="btn green" onclick="addCashMovement('ingreso')">+ Ingreso</button>
+    </div>
+    <div class="panel" id="financesPanel">
+      <div id="financesSummary"></div>
+      <div id="financesList" style="margin-top:14px"></div>
+    </div>
+  </section>
+
+  <!-- ============== INVENTARIO ============== -->
+  <section class="view" id="view-inventory">
+    <div class="page-head">
+      <h1>🏷️ Inventario de materiales</h1>
+      <input id="inventorySearch" placeholder="🔎 Buscar material..." oninput="renderInventory()">
+      <div class="spacer"></div>
+      <button class="btn primary" onclick="editInventory()">+ Agregar</button>
+    </div>
+    <div class="panel"><div id="inventoryList"></div></div>
+  </section>
+
+  <!-- ============== AGENDA ============== -->
+  <section class="view" id="view-agenda">
+    <div class="page-head">
+      <h1>📅 Agenda</h1>
+      <div class="spacer"></div>
+      <button class="btn primary" onclick="editAgenda()">+ Nuevo evento</button>
+    </div>
+    <div class="panel"><div id="agendaList"></div></div>
+  </section>
+
+  <!-- ============== PROSPECTOS / CRM ============== -->
+  <section class="view" id="view-leads">
+    <div class="page-head">
+      <h1>🎯 Prospectos</h1>
+      <input id="leadsSearch" placeholder="🔎 Buscar..." oninput="renderLeads()">
+      <div class="spacer"></div>
+      <button class="btn primary" onclick="editLead()">+ Nuevo prospecto</button>
+    </div>
+    <div class="panel"><div id="leadsList"></div></div>
+  </section>
+
+  <!-- ============== REPORTES ============== -->
+  <section class="view" id="view-reports">
+    <div class="page-head">
+      <h1>📊 Reportes</h1>
+    </div>
+    <div class="panel"><div id="reportsContent"></div></div>
+  </section>
 </main>
 
 <!-- PRINT AREA -->
@@ -1021,7 +1121,7 @@ function fmtDate(d){ if(!d) return ''; const [y,m,day]=String(d).slice(0,10).spl
 // ============================================================
 function go(v){
   document.querySelectorAll('.view').forEach(e=>e.classList.remove('active'));
-  $('view-'+v).classList.add('active');
+  const target = $('view-'+v); if(target) target.classList.add('active');
   document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('active', b.dataset.v===v));
   window.scrollTo(0,0);
   if(v==='dash') renderDash();
@@ -1031,6 +1131,13 @@ function go(v){
   if(v==='catalog') renderCatalog();
   if(v==='prices') renderPrices();
   if(v==='settings') fillSettings();
+  if(v==='projects') renderProjects();
+  if(v==='personnel') renderPersonnel();
+  if(v==='finances') renderFinances();
+  if(v==='inventory') renderInventory();
+  if(v==='agenda') renderAgenda();
+  if(v==='leads') renderLeads();
+  if(v==='reports') renderReports();
   updateQuoteFab();
 }
 document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>go(b.dataset.v));
@@ -2906,6 +3013,737 @@ window.addEventListener('keydown',planKey);
 function openModal(html){ $('modal').innerHTML=html; $('overlay').classList.add('show'); }
 function closeModal(){ $('overlay').classList.remove('show'); }
 $('overlay').addEventListener('click',e=>{ if(e.target.id==='overlay') closeModal(); });
+
+// ============================================================
+// MESHIPPING-SYSTEM v2.0 — Módulos empresariales
+// ============================================================
+S.projects=[]; S.personnel=[]; S.cash=[]; S.inventory=[]; S.agenda=[]; S.leads=[];
+S.editingProject=null;
+
+const PROJECT_STATUS = {
+  planificacion:{lbl:'Planificación',color:'#886cff'},
+  en_curso:     {lbl:'En curso',     color:'#19f7a4'},
+  pausado:      {lbl:'Pausado',      color:'#ffcf5a'},
+  terminado:    {lbl:'Terminado',    color:'#2fe6ff'},
+  cobrado:      {lbl:'Cobrado',      color:'#39ff14'},
+  cerrado:      {lbl:'Cerrado',      color:'#9aa0cf'},
+  cancelado:    {lbl:'Cancelado',    color:'#e55'}
+};
+const PROJECT_TYPES = {
+  'papel-ahumado':'🪟 Papel ahumado',
+  'pintura':     '🎨 Pintura',
+  'gypsum':      '🧱 Gypsum',
+  'remodelacion':'🔨 Remodelación',
+  'general':     '📋 General'
+};
+
+// ============================================================
+// PROYECTOS
+// ============================================================
+async function renderProjects(){
+  try{ S.projects = await api.get('/api/projects'); }catch(e){}
+  const q=($('projectSearch')?.value||'').toLowerCase();
+  let list = S.projects;
+  if(q) list=list.filter(p=>[p.name,p.number,p.client_name,p.location].some(f=>String(f||'').toLowerCase().includes(q)));
+  if(!list.length){ $('projectsList').innerHTML = emptyBox('Sin proyectos','Crea tu primer proyecto o convierte una cotización aprobada.'); return; }
+  $('projectsList').innerHTML = `<div class="tscroll"><table class="tbl"><thead><tr>
+    <th>Nº</th><th>Proyecto</th><th>Cliente</th><th>Tipo</th><th>Ubicación</th>
+    <th>Estado</th><th class="num">Contrato</th><th></th>
+    </tr></thead><tbody>${list.map(p=>{
+      const st = PROJECT_STATUS[p.status]||{lbl:p.status,color:'#888'};
+      return `<tr>
+        <td><span class="linklike mono" onclick="openProject('${p.id}')">${esc(p.number||'—')}</span></td>
+        <td><b>${esc(p.name)}</b></td>
+        <td>${esc(p.client_name||'—')}</td>
+        <td>${PROJECT_TYPES[p.type]||p.type}</td>
+        <td>${esc(p.location||'—')}</td>
+        <td><span class="badge" style="color:${st.color};border-color:${st.color}">${st.lbl}</span></td>
+        <td class="num mono">${money(p.contract_value+p.viaticos_value)}</td>
+        <td class="num" style="white-space:nowrap">
+          <button class="btn sm ghost" onclick="openProject('${p.id}')">Abrir</button>
+          <button class="btn sm ghost" style="color:#e55;border-color:#e55" onclick="delProject('${p.id}','${esc(p.name)}')">🗑</button>
+        </td></tr>`;
+    }).join('')}</tbody></table></div>`;
+}
+
+function newProject(){
+  openModal(`<h3>Nuevo proyecto</h3>
+    <div class="form-grid">
+      <label class="f"><span>Nombre del proyecto</span><input id="np_name" placeholder="Ej: Oficinas Puerto Armuelles"></label>
+      <label class="f"><span>Cliente</span><select id="np_client">${clientOptions('')}</select></label>
+      <label class="f"><span>Tipo</span><select id="np_type">${Object.entries(PROJECT_TYPES).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select></label>
+      <label class="f"><span>Ubicación</span><input id="np_location" placeholder="Ciudad / sitio"></label>
+      <label class="f"><span>Unidad de medida</span><select id="np_unit"><option value="m2">m² (pintura/gypsum)</option><option value="ft">ft lineal (papel ahumado)</option></select></label>
+      <label class="f"><span>Medida total</span><input type="number" step="0.01" min="0" id="np_measure" value="0"></label>
+      <label class="f"><span>Valor del contrato ($)</span><input type="number" step="0.01" min="0" id="np_contract" value="0"></label>
+      <label class="f"><span>Valor viáticos ($)</span><input type="number" step="0.01" min="0" id="np_viaticos" value="0"></label>
+    </div>
+    <div class="modal-actions"><button class="btn ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn primary" onclick="saveNewProject()">Crear proyecto</button></div>`);
+}
+
+async function saveNewProject(){
+  const b = {
+    name:$('np_name').value, client_id:$('np_client').value||null, type:$('np_type').value,
+    location:$('np_location').value, measure_unit:$('np_unit').value,
+    measure_total:Number($('np_measure').value||0),
+    contract_value:Number($('np_contract').value||0),
+    viaticos_value:Number($('np_viaticos').value||0)
+  };
+  if(!b.name.trim()){ toast('El nombre es obligatorio',true); return; }
+  try{ const p=await api.send('POST','/api/projects',b); closeModal(); toast('Proyecto creado ✓'); openProject(p.id); }
+  catch(e){ toast(e.message,true); }
+}
+
+function openProjectFromQuote(){
+  if(!S.quotes.length){ toast('No tienes cotizaciones aún',true); return; }
+  openModal(`<h3>Crear proyecto desde cotización</h3>
+    <label class="f"><span>Elige la cotización</span>
+      <select id="pfq_quote">${S.quotes.map(q=>`<option value="${q.id}">${esc(q.number||'')} · ${esc(q.client_name||'—')} · ${esc(q.title||'')} · ${money(q.total)}</option>`).join('')}</select>
+    </label>
+    <label class="f"><span>Valor de viáticos (opcional, $)</span><input type="number" step="0.01" min="0" id="pfq_viat" value="0"></label>
+    <label class="f"><span>Ubicación (opcional)</span><input id="pfq_loc" placeholder="Ciudad / sitio"></label>
+    <div class="modal-actions"><button class="btn ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn primary" onclick="confirmProjectFromQuote()">Crear proyecto</button></div>`);
+}
+
+async function confirmProjectFromQuote(){
+  const quoteId = $('pfq_quote').value;
+  const viaticos = Number($('pfq_viat').value||0);
+  const location = $('pfq_loc').value;
+  try{
+    const p = await api.send('POST','/api/projects/from-quote/'+quoteId,{viaticos_value:viaticos, location});
+    closeModal(); toast('Proyecto creado desde cotización ✓'); openProject(p.id);
+  }catch(e){ toast(e.message,true); }
+}
+
+async function openProject(id){
+  try{
+    S.editingProject = await api.get('/api/projects/'+id);
+    renderProjectEditor(); go('projecteditor');
+  }catch(e){ toast(e.message,true); }
+}
+
+async function delProject(id,name){
+  if(!confirm('¿Eliminar proyecto "'+name+'"? Esta acción elimina fases, gastos, pagos y personal asignado.')) return;
+  try{ await api.send('DELETE','/api/projects/'+id); toast('Proyecto eliminado'); renderProjects(); }
+  catch(e){ toast(e.message,true); }
+}
+
+function renderProjectEditor(){
+  const p = S.editingProject; if(!p) return;
+  $('projEditorTitle').textContent = p.name;
+  $('projEditorNumber').textContent = p.number;
+  const st = PROJECT_STATUS[p.status]||{lbl:p.status,color:'#888'};
+  const unitLabel = p.measure_unit==='ft'?'ft lineal':'m²';
+
+  const totalIngresos = p.total_payments||0;
+  const totalGastos = (p.total_expenses||0) + (p.total_personnel_cost||0);
+  const utilidad = totalIngresos - totalGastos;
+  const porCobrar = p.balance_due||0;
+  const porPagarPers = (p.total_personnel_cost||0) - (p.total_personnel_paid||0);
+
+  $('projectEditor').innerHTML = `
+    <div class="panel grid" style="grid-template-columns:2fr 1fr;align-items:start;gap:14px">
+      <div>
+        <div class="form-grid">
+          <label class="f"><span>Nombre</span><input id="pe_name" value="${esc(p.name)}"></label>
+          <label class="f"><span>Cliente</span><select id="pe_client">${clientOptions(p.client_id)}</select></label>
+          <label class="f"><span>Tipo</span><select id="pe_type">${Object.entries(PROJECT_TYPES).map(([k,v])=>`<option value="${k}" ${p.type===k?'selected':''}>${v}</option>`).join('')}</select></label>
+          <label class="f"><span>Estado</span><select id="pe_status">${Object.entries(PROJECT_STATUS).map(([k,v])=>`<option value="${k}" ${p.status===k?'selected':''}>${v.lbl}</option>`).join('')}</select></label>
+          <label class="f"><span>Ubicación</span><input id="pe_location" value="${esc(p.location||'')}"></label>
+          <label class="f"><span>Unidad</span><select id="pe_unit"><option value="m2" ${p.measure_unit==='m2'?'selected':''}>m²</option><option value="ft" ${p.measure_unit==='ft'?'selected':''}>ft lineal</option></select></label>
+          <label class="f"><span>Medida total (${unitLabel})</span><input type="number" step="0.01" min="0" id="pe_measure" value="${p.measure_total||0}"></label>
+          <label class="f"><span>Fecha inicio</span><input type="date" id="pe_start" value="${(p.start_date||'').slice(0,10)}"></label>
+          <label class="f"><span>Fecha fin</span><input type="date" id="pe_end" value="${(p.end_date||'').slice(0,10)}"></label>
+          <label class="f"><span>Valor contrato ($)</span><input type="number" step="0.01" min="0" id="pe_contract" value="${p.contract_value||0}"></label>
+          <label class="f"><span>Viáticos ($)</span><input type="number" step="0.01" min="0" id="pe_viaticos" value="${p.viaticos_value||0}"></label>
+        </div>
+        <label class="f"><span>Notas</span><textarea id="pe_notes" rows="3">${esc(p.notes||'')}</textarea></label>
+      </div>
+      <div>
+        <div class="totals" style="max-width:none">
+          <div class="row"><span>Estado</span><span style="color:${st.color}"><b>${st.lbl}</b></span></div>
+          <div class="row"><span>Contrato + viáticos</span><span>${money((p.contract_value||0)+(p.viaticos_value||0))}</span></div>
+          <div class="row"><span>Ingresos recibidos</span><span style="color:var(--green)">${money(totalIngresos)}</span></div>
+          <div class="row"><span>Por cobrar</span><span style="color:var(--cyan2)">${money(porCobrar)}</span></div>
+          <div class="row"><span>Gastos + personal</span><span style="color:#e55">${money(totalGastos)}</span></div>
+          <div class="row"><span>Por pagar a personal</span><span style="color:#ffcf5a">${money(porPagarPers)}</span></div>
+          <div class="row grand"><span>Utilidad real</span><b style="color:${utilidad>=0?'var(--green)':'#e55'}">${money(utilidad)}</b></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <h3 class="mono" style="margin:0;font-size:15px">📅 Fases del proyecto</h3>
+        <div class="spacer"></div>
+        <button class="btn sm" onclick="addPhase()">+ Fase</button>
+      </div>
+      <div id="projPhases"></div>
+    </div>
+
+    <div class="panel grid" style="grid-template-columns:1fr 1fr;gap:14px">
+      <div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+          <h3 class="mono" style="margin:0;font-size:15px">💵 Ingresos (cobros)</h3>
+          <div class="spacer"></div>
+          <button class="btn sm green" onclick="addPayment()">+ Cobro</button>
+        </div>
+        <div id="projPayments"></div>
+      </div>
+      <div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+          <h3 class="mono" style="margin:0;font-size:15px">💸 Gastos</h3>
+          <div class="spacer"></div>
+          <button class="btn sm" style="color:#e55;border-color:#e55" onclick="addExpense()">+ Gasto</button>
+        </div>
+        <div id="projExpenses"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <h3 class="mono" style="margin:0;font-size:15px">👷 Personal asignado</h3>
+        <div class="spacer"></div>
+        <button class="btn sm" onclick="addProjectPersonnel()">+ Asignar</button>
+      </div>
+      <div id="projPersonnel"></div>
+    </div>
+  `;
+  renderProjPhases(); renderProjPayments(); renderProjExpenses(); renderProjPersonnel();
+}
+
+function renderProjPhases(){
+  const p = S.editingProject;
+  if(!p.phases.length){ $('projPhases').innerHTML = '<div class="hint">Aún no hay fases. Agrega las etapas del proyecto.</div>'; return; }
+  $('projPhases').innerHTML = p.phases.map(f=>{
+    const stColor = f.status==='completado'?'var(--green)':f.status==='en_curso'?'var(--cyan2)':'var(--muted)';
+    return `<div class="item-row">
+      <div class="top">
+        <div class="desc"><input value="${esc(f.name)}" onchange="updPhase('${f.id}','name',this.value)"></div>
+        <select style="width:150px;flex:none" onchange="updPhase('${f.id}','status',this.value)">
+          <option value="pendiente" ${f.status==='pendiente'?'selected':''}>Pendiente</option>
+          <option value="en_curso" ${f.status==='en_curso'?'selected':''}>En curso</option>
+          <option value="completado" ${f.status==='completado'?'selected':''}>Completado</option>
+        </select>
+        <button class="btn icon danger sm" onclick="delPhase('${f.id}')">✕</button>
+      </div>
+      <div style="margin-top:8px;display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:0 12px">
+        <label class="f"><span>Inicio planificado</span><input type="date" value="${(f.planned_start||'').slice(0,10)}" onchange="updPhase('${f.id}','planned_start',this.value)"></label>
+        <label class="f"><span>Fin planificado</span><input type="date" value="${(f.planned_end||'').slice(0,10)}" onchange="updPhase('${f.id}','planned_end',this.value)"></label>
+      </div>
+      <input placeholder="Descripción / notas" value="${esc(f.description||'')}" onchange="updPhase('${f.id}','description',this.value)" style="margin-top:8px">
+    </div>`;
+  }).join('');
+}
+async function addPhase(){
+  const name = prompt('Nombre de la fase:'); if(!name) return;
+  try{ await api.send('POST','/api/projects/'+S.editingProject.id+'/phases',{name});
+    S.editingProject = await api.get('/api/projects/'+S.editingProject.id); renderProjPhases();
+  }catch(e){ toast(e.message,true); }
+}
+async function updPhase(id,key,val){
+  const phase = S.editingProject.phases.find(f=>f.id===id);
+  phase[key]=val;
+  try{ await api.send('PUT','/api/phases/'+id,phase); }catch(e){ toast(e.message,true); }
+}
+async function delPhase(id){
+  if(!confirm('¿Eliminar esta fase?')) return;
+  try{ await api.send('DELETE','/api/phases/'+id);
+    S.editingProject = await api.get('/api/projects/'+S.editingProject.id); renderProjPhases();
+  }catch(e){ toast(e.message,true); }
+}
+
+function renderProjPayments(){
+  const p = S.editingProject;
+  if(!p.payments.length){ $('projPayments').innerHTML = '<div class="hint">Sin cobros registrados aún.</div>'; return; }
+  $('projPayments').innerHTML = `<div class="tscroll"><table class="tbl"><thead><tr>
+    <th>Fecha</th><th>Tipo</th><th>Método</th><th class="num">Monto</th><th></th></tr></thead><tbody>
+    ${p.payments.map(x=>`<tr>
+      <td class="mono">${fmtDate(x.date)}</td><td>${esc(x.type)}</td><td>${esc(x.method||'')}</td>
+      <td class="num mono" style="color:var(--green)">${money(x.amount)}</td>
+      <td class="num"><button class="btn sm ghost" onclick="delPayment('${x.id}')">✕</button></td>
+    </tr>`).join('')}</tbody></table></div>`;
+}
+function addPayment(){
+  openModal(`<h3>Registrar cobro</h3>
+    <div class="form-grid">
+      <label class="f"><span>Fecha</span><input type="date" id="pay_date" value="${new Date().toISOString().slice(0,10)}"></label>
+      <label class="f"><span>Tipo</span><select id="pay_type">
+        <option value="adelanto">Adelanto 50%</option><option value="parcial">Pago parcial</option>
+        <option value="final">Pago final</option><option value="viaticos">Viáticos</option><option value="extra">Extra</option>
+      </select></label>
+      <label class="f"><span>Monto ($)</span><input type="number" step="0.01" min="0" id="pay_amount"></label>
+      <label class="f"><span>Método</span><select id="pay_method">
+        <option value="efectivo">Efectivo</option><option value="yappy">Yappy</option>
+        <option value="transferencia">Transferencia</option><option value="cheque">Cheque</option>
+      </select></label>
+      <label class="f"><span>Referencia</span><input id="pay_ref" placeholder="Nº de cheque, transfer..."></label>
+    </div>
+    <div class="modal-actions"><button class="btn ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn green" onclick="saveNewPayment()">Registrar cobro</button></div>`);
+}
+async function saveNewPayment(){
+  const b={date:$('pay_date').value,type:$('pay_type').value,amount:Number($('pay_amount').value||0),
+           method:$('pay_method').value,reference:$('pay_ref').value};
+  if(b.amount<=0){ toast('Monto debe ser mayor a cero',true); return; }
+  try{ await api.send('POST','/api/projects/'+S.editingProject.id+'/payments',b); closeModal();
+    S.editingProject = await api.get('/api/projects/'+S.editingProject.id); renderProjectEditor(); toast('Cobro registrado ✓');
+  }catch(e){ toast(e.message,true); }
+}
+async function delPayment(id){
+  if(!confirm('¿Eliminar este cobro?')) return;
+  try{ await api.send('DELETE','/api/payments/'+id);
+    S.editingProject = await api.get('/api/projects/'+S.editingProject.id); renderProjectEditor();
+  }catch(e){ toast(e.message,true); }
+}
+
+function renderProjExpenses(){
+  const p = S.editingProject;
+  if(!p.expenses.length){ $('projExpenses').innerHTML = '<div class="hint">Sin gastos registrados aún.</div>'; return; }
+  $('projExpenses').innerHTML = `<div class="tscroll"><table class="tbl"><thead><tr>
+    <th>Fecha</th><th>Categoría</th><th>Descripción</th><th class="num">Monto</th><th></th></tr></thead><tbody>
+    ${p.expenses.map(x=>`<tr>
+      <td class="mono">${fmtDate(x.date)}</td><td>${esc(x.category)}</td><td>${esc(x.description||'')}</td>
+      <td class="num mono" style="color:#e55">${money(x.amount)}</td>
+      <td class="num"><button class="btn sm ghost" onclick="delExpense('${x.id}')">✕</button></td>
+    </tr>`).join('')}</tbody></table></div>`;
+}
+function addExpense(){
+  openModal(`<h3>Registrar gasto</h3>
+    <div class="form-grid">
+      <label class="f"><span>Fecha</span><input type="date" id="exp_date" value="${new Date().toISOString().slice(0,10)}"></label>
+      <label class="f"><span>Categoría</span><select id="exp_cat">
+        <option value="materiales">Materiales</option><option value="viaticos">Viáticos</option>
+        <option value="combustible">Combustible</option><option value="alquiler">Alquiler</option>
+        <option value="transporte">Transporte</option><option value="comida">Comida</option>
+        <option value="hospedaje">Hospedaje</option><option value="otros">Otros</option>
+      </select></label>
+      <label class="f"><span>Descripción</span><input id="exp_desc" placeholder="Ej: Compra rollo Madico"></label>
+      <label class="f"><span>Monto ($)</span><input type="number" step="0.01" min="0" id="exp_amount"></label>
+      <label class="f"><span>Pagado a</span><input id="exp_paidto" placeholder="Proveedor / persona"></label>
+    </div>
+    <div class="modal-actions"><button class="btn ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn primary" onclick="saveNewExpense()">Registrar gasto</button></div>`);
+}
+async function saveNewExpense(){
+  const b={date:$('exp_date').value,category:$('exp_cat').value,description:$('exp_desc').value,
+           amount:Number($('exp_amount').value||0),paid_to:$('exp_paidto').value};
+  if(b.amount<=0){ toast('Monto debe ser mayor a cero',true); return; }
+  try{ await api.send('POST','/api/projects/'+S.editingProject.id+'/expenses',b); closeModal();
+    S.editingProject = await api.get('/api/projects/'+S.editingProject.id); renderProjectEditor(); toast('Gasto registrado ✓');
+  }catch(e){ toast(e.message,true); }
+}
+async function delExpense(id){
+  if(!confirm('¿Eliminar este gasto?')) return;
+  try{ await api.send('DELETE','/api/expenses/'+id);
+    S.editingProject = await api.get('/api/projects/'+S.editingProject.id); renderProjectEditor();
+  }catch(e){ toast(e.message,true); }
+}
+
+function renderProjPersonnel(){
+  const p = S.editingProject;
+  if(!p.personnel.length){ $('projPersonnel').innerHTML = '<div class="hint">Sin personal asignado. Agrega personas de la base de contratistas.</div>'; return; }
+  $('projPersonnel').innerHTML = `<div class="tscroll"><table class="tbl"><thead><tr>
+    <th>Persona</th><th>Rol</th><th>Tarifa</th><th class="num">Cantidad</th>
+    <th class="num">Total</th><th class="num">Pagado</th><th class="num">Saldo</th><th></th></tr></thead><tbody>
+    ${p.personnel.map(x=>{
+      const saldo = (x.total_pay||0) - (x.paid||0);
+      const unit = x.rate_type==='m2'?'/m²':x.rate_type==='ft'?'/ft':x.rate_type==='day'?'/día':' global';
+      return `<tr>
+        <td><b>${esc(x.personnel_name||'—')}</b><div style="font-size:11px;color:var(--muted)">${esc(x.specialty||'')}</div></td>
+        <td>${esc(x.role||'')}</td>
+        <td class="mono">${money(x.rate_value)}${unit}</td>
+        <td class="num mono">${x.qty}</td>
+        <td class="num mono"><b>${money(x.total_pay)}</b></td>
+        <td class="num mono" style="color:var(--green)">${money(x.paid)}</td>
+        <td class="num mono" style="color:${saldo>0?'#ffcf5a':'var(--muted)'}">${money(saldo)}</td>
+        <td class="num">
+          <button class="btn sm ghost" onclick="editProjectPersonnel('${x.id}')">✎</button>
+          <button class="btn sm ghost" onclick="delProjectPersonnel('${x.id}')">✕</button>
+        </td></tr>`;
+    }).join('')}</tbody></table></div>`;
+}
+
+function addProjectPersonnel(){ editProjectPersonnel(null); }
+async function editProjectPersonnel(id){
+  if(!S.personnel.length){
+    try{ S.personnel = await api.get('/api/personnel'); }catch(e){}
+  }
+  if(!S.personnel.length){ toast('Primero agrega personas en Personal',true); return; }
+  const cur = id ? S.editingProject.personnel.find(x=>x.id===id) : {personnel_id:S.personnel[0].id,role:'',rate_type:'day',rate_value:0,qty:1,paid:0};
+  openModal(`<h3>${id?'Editar':'Asignar'} persona al proyecto</h3>
+    <div class="form-grid">
+      <label class="f"><span>Persona</span><select id="pp_person">${S.personnel.map(p=>`<option value="${p.id}" ${p.id===cur.personnel_id?'selected':''}>${esc(p.name)} (${esc(p.specialty||'')})</option>`).join('')}</select></label>
+      <label class="f"><span>Rol en este proyecto</span><input id="pp_role" value="${esc(cur.role||'')}" placeholder="Instalador líder, ayudante..."></label>
+      <label class="f"><span>Tipo de tarifa</span><select id="pp_rate_type">
+        <option value="m2" ${cur.rate_type==='m2'?'selected':''}>Por m² (pintura/gypsum)</option>
+        <option value="ft" ${cur.rate_type==='ft'?'selected':''}>Por ft lineal (papel ahumado)</option>
+        <option value="day" ${cur.rate_type==='day'?'selected':''}>Por día</option>
+        <option value="global" ${cur.rate_type==='global'?'selected':''}>Global (fijo por proyecto)</option>
+      </select></label>
+      <label class="f"><span>Tarifa ($)</span><input type="number" step="0.01" min="0" id="pp_rate" value="${cur.rate_value||0}"></label>
+      <label class="f"><span>Cantidad (m²/ft/días)</span><input type="number" step="0.01" min="0" id="pp_qty" value="${cur.qty||1}"></label>
+      <label class="f"><span>Ya pagado ($)</span><input type="number" step="0.01" min="0" id="pp_paid" value="${cur.paid||0}"></label>
+    </div>
+    <div class="modal-actions"><button class="btn ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn primary" onclick="saveProjectPersonnel('${id||''}')">Guardar</button></div>`);
+}
+async function saveProjectPersonnel(id){
+  const b={personnel_id:$('pp_person').value,role:$('pp_role').value,rate_type:$('pp_rate_type').value,
+           rate_value:Number($('pp_rate').value||0),qty:Number($('pp_qty').value||0),paid:Number($('pp_paid').value||0)};
+  try{
+    if(id) await api.send('PUT','/api/project-personnel/'+id,b);
+    else await api.send('POST','/api/projects/'+S.editingProject.id+'/personnel',b);
+    closeModal(); S.editingProject = await api.get('/api/projects/'+S.editingProject.id); renderProjectEditor(); toast('Guardado ✓');
+  }catch(e){ toast(e.message,true); }
+}
+async function delProjectPersonnel(id){
+  if(!confirm('¿Quitar esta persona del proyecto?')) return;
+  try{ await api.send('DELETE','/api/project-personnel/'+id);
+    S.editingProject = await api.get('/api/projects/'+S.editingProject.id); renderProjectEditor();
+  }catch(e){ toast(e.message,true); }
+}
+
+async function saveProject(){
+  const p = S.editingProject;
+  const b={name:$('pe_name').value,client_id:$('pe_client').value||null,type:$('pe_type').value,
+           status:$('pe_status').value,location:$('pe_location').value,measure_unit:$('pe_unit').value,
+           measure_total:Number($('pe_measure').value||0),start_date:$('pe_start').value,end_date:$('pe_end').value,
+           contract_value:Number($('pe_contract').value||0),viaticos_value:Number($('pe_viaticos').value||0),
+           notes:$('pe_notes').value};
+  try{ S.editingProject = await api.send('PUT','/api/projects/'+p.id,b);
+    renderProjectEditor(); toast('Proyecto guardado ✓');
+  }catch(e){ toast(e.message,true); }
+}
+
+// ============================================================
+// PERSONAL / CONTRATISTAS
+// ============================================================
+const SPECIALTIES = ['Pintor','Instalador papel ahumado','Ayudante','Chofer','Gypsum','Remodelación','General'];
+
+async function renderPersonnel(){
+  try{ S.personnel = await api.get('/api/personnel'); }catch(e){}
+  const q=($('personnelSearch')?.value||'').toLowerCase();
+  let list = S.personnel;
+  if(q) list=list.filter(p=>[p.name,p.specialty,p.phone].some(f=>String(f||'').toLowerCase().includes(q)));
+  if(!list.length){ $('personnelList').innerHTML = emptyBox('Sin personal','Agrega tu primer contratista.'); return; }
+  $('personnelList').innerHTML = `<div class="tscroll"><table class="tbl"><thead><tr>
+    <th>Nombre</th><th>Especialidad</th><th>Teléfono</th><th class="num">$/m²</th>
+    <th class="num">$/ft</th><th class="num">$/día</th><th>Estado</th><th></th>
+    </tr></thead><tbody>${list.map(p=>`<tr>
+      <td><b>${esc(p.name)}</b></td>
+      <td>${esc(p.specialty||'—')}</td>
+      <td class="mono">${esc(p.phone||'')}</td>
+      <td class="num mono">${p.rate_m2>0?money(p.rate_m2):'—'}</td>
+      <td class="num mono">${p.rate_ft>0?money(p.rate_ft):'—'}</td>
+      <td class="num mono">${p.rate_day>0?money(p.rate_day):'—'}</td>
+      <td>${p.active?'<span class="badge" style="color:var(--green);border-color:var(--green)">Activo</span>':'<span class="badge">Inactivo</span>'}</td>
+      <td class="num" style="white-space:nowrap">
+        <button class="btn sm ghost" onclick="editPersonnel('${p.id}')">✎</button>
+        <button class="btn sm ghost" style="color:#e55;border-color:#e55" onclick="delPersonnel('${p.id}','${esc(p.name)}')">🗑</button>
+      </td></tr>`).join('')}</tbody></table></div>`;
+}
+
+function editPersonnel(id){
+  const cur = id ? S.personnel.find(p=>p.id===id) : {name:'',specialty:'',phone:'',email:'',id_number:'',address:'',rate_m2:0,rate_ft:0,rate_day:0,rate_global:0,notes:'',active:1};
+  openModal(`<h3>${id?'Editar':'Nueva'} persona</h3>
+    <div class="form-grid">
+      <label class="f"><span>Nombre completo</span><input id="per_name" value="${esc(cur.name)}"></label>
+      <label class="f"><span>Especialidad</span><select id="per_specialty">${SPECIALTIES.map(s=>`<option ${cur.specialty===s?'selected':''}>${s}</option>`).join('')}</select></label>
+      <label class="f"><span>Teléfono</span><input id="per_phone" value="${esc(cur.phone)}"></label>
+      <label class="f"><span>Email</span><input id="per_email" value="${esc(cur.email)}"></label>
+      <label class="f"><span>Cédula</span><input id="per_id" value="${esc(cur.id_number)}"></label>
+      <label class="f"><span>Dirección</span><input id="per_address" value="${esc(cur.address)}"></label>
+    </div>
+    <h4 style="margin:14px 0 8px;font-size:13px;color:var(--cyan2)">💵 Tarifas por tipo de trabajo</h4>
+    <div class="form-grid">
+      <label class="f"><span>$/m² (pintura/gypsum)</span><input type="number" step="0.01" min="0" id="per_rate_m2" value="${cur.rate_m2||0}"></label>
+      <label class="f"><span>$/ft lineal (papel ahumado)</span><input type="number" step="0.01" min="0" id="per_rate_ft" value="${cur.rate_ft||0}"></label>
+      <label class="f"><span>$/día</span><input type="number" step="0.01" min="0" id="per_rate_day" value="${cur.rate_day||0}"></label>
+      <label class="f"><span>$ global (por proyecto)</span><input type="number" step="0.01" min="0" id="per_rate_global" value="${cur.rate_global||0}"></label>
+    </div>
+    <label class="switch" style="margin-top:12px"><input type="checkbox" id="per_active" ${cur.active?'checked':''}> Activo (disponible para proyectos)</label>
+    <label class="f"><span>Notas</span><textarea id="per_notes" rows="2">${esc(cur.notes||'')}</textarea></label>
+    <div class="modal-actions"><button class="btn ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn primary" onclick="savePersonnel('${id||''}')">Guardar</button></div>`);
+}
+
+async function savePersonnel(id){
+  const b={name:$('per_name').value,specialty:$('per_specialty').value,phone:$('per_phone').value,
+           email:$('per_email').value,id_number:$('per_id').value,address:$('per_address').value,
+           rate_m2:Number($('per_rate_m2').value||0),rate_ft:Number($('per_rate_ft').value||0),
+           rate_day:Number($('per_rate_day').value||0),rate_global:Number($('per_rate_global').value||0),
+           active:$('per_active').checked?1:0,notes:$('per_notes').value};
+  if(!b.name.trim()){ toast('El nombre es obligatorio',true); return; }
+  try{
+    if(id) await api.send('PUT','/api/personnel/'+id,b);
+    else await api.send('POST','/api/personnel',b);
+    closeModal(); toast('Persona guardada ✓'); renderPersonnel();
+  }catch(e){ toast(e.message,true); }
+}
+
+async function delPersonnel(id,name){
+  if(!confirm('¿Eliminar a "'+name+'"?')) return;
+  try{ await api.send('DELETE','/api/personnel/'+id); toast('Persona eliminada'); renderPersonnel(); }
+  catch(e){ toast(e.message,true); }
+}
+
+// ============================================================
+// FINANZAS / CAJA
+// ============================================================
+async function renderFinances(){
+  try{ S.cash = await api.get('/api/cash'); }catch(e){}
+  const ingresos = S.cash.filter(x=>x.type==='ingreso').reduce((s,x)=>s+x.amount,0);
+  const gastos = S.cash.filter(x=>x.type==='gasto').reduce((s,x)=>s+x.amount,0);
+  const saldo = ingresos - gastos;
+  $('financesSummary').innerHTML = `<div class="stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px">
+    <div class="stat"><div class="l">Ingresos totales</div><div class="v" style="color:var(--green)">${money(ingresos)}</div></div>
+    <div class="stat"><div class="l">Gastos totales</div><div class="v" style="color:#e55">${money(gastos)}</div></div>
+    <div class="stat"><div class="l">Saldo neto</div><div class="v" style="color:${saldo>=0?'var(--cyan2)':'#e55'}">${money(saldo)}</div></div>
+    <div class="stat"><div class="l">Movimientos</div><div class="v">${S.cash.length}</div></div>
+  </div>`;
+  if(!S.cash.length){ $('financesList').innerHTML = emptyBox('Sin movimientos','Registra tus primeros ingresos o gastos.'); return; }
+  $('financesList').innerHTML = `<div class="tscroll"><table class="tbl"><thead><tr>
+    <th>Fecha</th><th>Tipo</th><th>Categoría</th><th>Descripción</th><th>Proyecto</th><th>Método</th><th class="num">Monto</th><th></th></tr></thead><tbody>
+    ${S.cash.map(x=>`<tr>
+      <td class="mono">${fmtDate(x.date)}</td>
+      <td>${x.type==='ingreso'?'<span style="color:var(--green)">↑ Ingreso</span>':'<span style="color:#e55">↓ Gasto</span>'}</td>
+      <td>${esc(x.category||'')}</td><td>${esc(x.description||'')}</td>
+      <td>${esc(x.project_name||'—')}</td><td>${esc(x.method||'')}</td>
+      <td class="num mono" style="color:${x.type==='ingreso'?'var(--green)':'#e55'}">${money(x.amount)}</td>
+      <td class="num"><button class="btn sm ghost" onclick="delCash('${x.id}')">✕</button></td>
+    </tr>`).join('')}</tbody></table></div>`;
+}
+
+function addCashMovement(type){
+  const projOpts = '<option value="">— Sin proyecto —</option>'+S.projects.map(p=>`<option value="${p.id}">${esc(p.number)} · ${esc(p.name)}</option>`).join('');
+  openModal(`<h3>${type==='ingreso'?'+ Nuevo ingreso':'− Nuevo gasto'}</h3>
+    <div class="form-grid">
+      <label class="f"><span>Fecha</span><input type="date" id="cm_date" value="${new Date().toISOString().slice(0,10)}"></label>
+      <label class="f"><span>Categoría</span><input id="cm_cat" placeholder="Ej: Cobro proyecto / Gasolina"></label>
+      <label class="f"><span>Descripción</span><input id="cm_desc"></label>
+      <label class="f"><span>Monto ($)</span><input type="number" step="0.01" min="0" id="cm_amount"></label>
+      <label class="f"><span>Proyecto (opcional)</span><select id="cm_project">${projOpts}</select></label>
+      <label class="f"><span>Método</span><select id="cm_method">
+        <option value="efectivo">Efectivo</option><option value="yappy">Yappy</option>
+        <option value="banco">Transferencia</option><option value="cheque">Cheque</option>
+      </select></label>
+    </div>
+    <div class="modal-actions"><button class="btn ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn ${type==='ingreso'?'green':'primary'}" onclick="saveNewCash('${type}')">Registrar</button></div>`);
+}
+async function saveNewCash(type){
+  const b={date:$('cm_date').value,type,category:$('cm_cat').value,description:$('cm_desc').value,
+           amount:Number($('cm_amount').value||0),project_id:$('cm_project').value||null,method:$('cm_method').value};
+  if(b.amount<=0){ toast('Monto debe ser mayor a cero',true); return; }
+  try{ await api.send('POST','/api/cash',b); closeModal(); toast('Movimiento registrado ✓'); renderFinances(); }
+  catch(e){ toast(e.message,true); }
+}
+async function delCash(id){
+  if(!confirm('¿Eliminar este movimiento?')) return;
+  try{ await api.send('DELETE','/api/cash/'+id); renderFinances(); }catch(e){ toast(e.message,true); }
+}
+
+// ============================================================
+// INVENTARIO
+// ============================================================
+async function renderInventory(){
+  try{ S.inventory = await api.get('/api/inventory'); }catch(e){}
+  const q=($('inventorySearch')?.value||'').toLowerCase();
+  let list = S.inventory;
+  if(q) list=list.filter(i=>[i.name,i.category,i.location].some(f=>String(f||'').toLowerCase().includes(q)));
+  if(!list.length){ $('inventoryList').innerHTML = emptyBox('Sin materiales','Registra el stock que tienes guardado.'); return; }
+  $('inventoryList').innerHTML = `<div class="tscroll"><table class="tbl"><thead><tr>
+    <th>Material</th><th>Categoría</th><th>Ubicación</th><th class="num">Stock</th>
+    <th class="num">Mínimo</th><th class="num">Costo prom.</th><th></th></tr></thead><tbody>
+    ${list.map(i=>{
+      const low = i.stock <= i.min_stock && i.min_stock > 0;
+      return `<tr>
+        <td><b>${esc(i.name)}</b></td><td>${esc(i.category||'')}</td><td>${esc(i.location||'')}</td>
+        <td class="num mono" style="color:${low?'#e55':'var(--text)'}">${i.stock} ${esc(i.unit||'')}${low?' ⚠️':''}</td>
+        <td class="num mono">${i.min_stock}</td>
+        <td class="num mono">${money(i.avg_cost)}</td>
+        <td class="num"><button class="btn sm ghost" onclick="editInventory('${i.id}')">✎</button>
+        <button class="btn sm ghost" onclick="delInventory('${i.id}')">✕</button></td>
+      </tr>`;
+    }).join('')}</tbody></table></div>`;
+}
+function editInventory(id){
+  const cur = id ? S.inventory.find(i=>i.id===id) : {name:'',category:'',unit:'und',stock:0,min_stock:0,avg_cost:0,location:'',notes:''};
+  openModal(`<h3>${id?'Editar':'Nuevo'} material</h3>
+    <div class="form-grid">
+      <label class="f"><span>Nombre</span><input id="inv_name" value="${esc(cur.name)}"></label>
+      <label class="f"><span>Categoría</span><input id="inv_cat" value="${esc(cur.category)}" placeholder="pintura, herramienta..."></label>
+      <label class="f"><span>Unidad</span><input id="inv_unit" value="${esc(cur.unit)}" placeholder="und, gal, m, kg..."></label>
+      <label class="f"><span>Stock actual</span><input type="number" step="0.01" min="0" id="inv_stock" value="${cur.stock}"></label>
+      <label class="f"><span>Stock mínimo</span><input type="number" step="0.01" min="0" id="inv_min" value="${cur.min_stock}"></label>
+      <label class="f"><span>Costo unitario promedio ($)</span><input type="number" step="0.01" min="0" id="inv_cost" value="${cur.avg_cost}"></label>
+      <label class="f"><span>Ubicación</span><input id="inv_loc" value="${esc(cur.location)}"></label>
+    </div>
+    <label class="f"><span>Notas</span><textarea id="inv_notes" rows="2">${esc(cur.notes||'')}</textarea></label>
+    <div class="modal-actions"><button class="btn ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn primary" onclick="saveInventory('${id||''}')">Guardar</button></div>`);
+}
+async function saveInventory(id){
+  const b={name:$('inv_name').value,category:$('inv_cat').value,unit:$('inv_unit').value,
+           stock:Number($('inv_stock').value||0),min_stock:Number($('inv_min').value||0),
+           avg_cost:Number($('inv_cost').value||0),location:$('inv_loc').value,notes:$('inv_notes').value};
+  if(!b.name.trim()){ toast('Nombre obligatorio',true); return; }
+  try{
+    if(id) await api.send('PUT','/api/inventory/'+id,b);
+    else await api.send('POST','/api/inventory',b);
+    closeModal(); toast('Material guardado ✓'); renderInventory();
+  }catch(e){ toast(e.message,true); }
+}
+async function delInventory(id){
+  if(!confirm('¿Eliminar este material?')) return;
+  try{ await api.send('DELETE','/api/inventory/'+id); renderInventory(); }catch(e){ toast(e.message,true); }
+}
+
+// ============================================================
+// AGENDA
+// ============================================================
+const AGENDA_TYPES={visita:'🔍 Visita técnica',instalacion:'🔧 Instalación',cobro:'💰 Cobro',reunion:'🤝 Reunión',otro:'📌 Otro'};
+async function renderAgenda(){
+  try{ S.agenda = await api.get('/api/agenda'); }catch(e){}
+  if(!S.agenda.length){ $('agendaList').innerHTML = emptyBox('Agenda vacía','Agrega visitas, instalaciones, cobros o reuniones.'); return; }
+  const today = new Date().toISOString().slice(0,10);
+  $('agendaList').innerHTML = S.agenda.map(e=>{
+    const past = e.date < today && !e.done;
+    const isToday = e.date === today;
+    return `<div class="item-row" style="border-left:3px solid ${e.done?'var(--green)':isToday?'var(--cyan2)':past?'#e55':'var(--purple)'}">
+      <div class="top">
+        <div class="desc">
+          <b style="font-size:15px">${AGENDA_TYPES[e.type]||e.type} · ${esc(e.title)}</b>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px">📅 ${fmtDate(e.date)}${e.time?' · ⏰ '+esc(e.time):''}${e.location?' · 📍 '+esc(e.location):''}</div>
+        </div>
+        <label class="switch"><input type="checkbox" ${e.done?'checked':''} onchange="toggleAgendaDone('${e.id}',this.checked)"> Hecho</label>
+        <button class="btn icon danger sm" onclick="delAgenda('${e.id}')">✕</button>
+      </div>
+      ${e.notes?`<div style="margin-top:6px;font-size:13px;color:var(--muted)">${esc(e.notes)}</div>`:''}
+    </div>`;
+  }).join('');
+}
+function editAgenda(){
+  const projOpts = '<option value="">—</option>'+S.projects.map(p=>`<option value="${p.id}">${esc(p.number)} · ${esc(p.name)}</option>`).join('');
+  openModal(`<h3>Nuevo evento</h3>
+    <div class="form-grid">
+      <label class="f"><span>Fecha</span><input type="date" id="ag_date" value="${new Date().toISOString().slice(0,10)}"></label>
+      <label class="f"><span>Hora</span><input type="time" id="ag_time"></label>
+      <label class="f"><span>Tipo</span><select id="ag_type">${Object.entries(AGENDA_TYPES).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select></label>
+      <label class="f"><span>Título</span><input id="ag_title" placeholder="Ej: Visita técnica Costa del Este"></label>
+      <label class="f"><span>Proyecto</span><select id="ag_project">${projOpts}</select></label>
+      <label class="f"><span>Ubicación</span><input id="ag_loc"></label>
+    </div>
+    <label class="f"><span>Notas</span><textarea id="ag_notes" rows="2"></textarea></label>
+    <div class="modal-actions"><button class="btn ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn primary" onclick="saveAgenda()">Guardar</button></div>`);
+}
+async function saveAgenda(){
+  const b={date:$('ag_date').value,time:$('ag_time').value,type:$('ag_type').value,
+           title:$('ag_title').value,project_id:$('ag_project').value||null,
+           location:$('ag_loc').value,notes:$('ag_notes').value};
+  if(!b.title){ toast('Título obligatorio',true); return; }
+  try{ await api.send('POST','/api/agenda',b); closeModal(); toast('Evento agregado ✓'); renderAgenda(); }
+  catch(e){ toast(e.message,true); }
+}
+async function toggleAgendaDone(id,done){
+  const e = S.agenda.find(x=>x.id===id); e.done = done?1:0;
+  try{ await api.send('PUT','/api/agenda/'+id,e); renderAgenda(); }catch(err){ toast(err.message,true); }
+}
+async function delAgenda(id){
+  if(!confirm('¿Eliminar este evento?')) return;
+  try{ await api.send('DELETE','/api/agenda/'+id); renderAgenda(); }catch(e){ toast(e.message,true); }
+}
+
+// ============================================================
+// LEADS / CRM
+// ============================================================
+const LEAD_STATUS={nuevo:'🆕 Nuevo',contactado:'📞 Contactado',cotizado:'📄 Cotizado',ganado:'🎉 Ganado',perdido:'❌ Perdido'};
+async function renderLeads(){
+  try{ S.leads = await api.get('/api/leads'); }catch(e){}
+  const q=($('leadsSearch')?.value||'').toLowerCase();
+  let list=S.leads;
+  if(q) list=list.filter(l=>[l.name,l.phone,l.interest].some(f=>String(f||'').toLowerCase().includes(q)));
+  if(!list.length){ $('leadsList').innerHTML = emptyBox('Sin prospectos','Agrega los contactos interesados.'); return; }
+  $('leadsList').innerHTML=`<div class="tscroll"><table class="tbl"><thead><tr>
+    <th>Nombre</th><th>Teléfono</th><th>Fuente</th><th>Interés</th><th>Estado</th><th class="num">Valor est.</th><th>Próx. acción</th><th></th>
+    </tr></thead><tbody>${list.map(l=>`<tr>
+      <td><b>${esc(l.name)}</b></td>
+      <td class="mono">${esc(l.phone||'')}</td>
+      <td>${esc(l.source||'')}</td>
+      <td>${esc(l.interest||'')}</td>
+      <td>${LEAD_STATUS[l.status]||l.status}</td>
+      <td class="num mono">${money(l.value_est||0)}</td>
+      <td>${esc(l.next_action||'')} ${l.next_date?('· '+fmtDate(l.next_date)):''}</td>
+      <td class="num"><button class="btn sm ghost" onclick="editLead('${l.id}')">✎</button>
+        <button class="btn sm ghost" onclick="delLead('${l.id}')">✕</button></td>
+    </tr>`).join('')}</tbody></table></div>`;
+}
+function editLead(id){
+  const cur = id ? S.leads.find(l=>l.id===id) : {name:'',phone:'',email:'',source:'whatsapp',interest:'',status:'nuevo',value_est:0,next_action:'',next_date:'',notes:''};
+  openModal(`<h3>${id?'Editar':'Nuevo'} prospecto</h3>
+    <div class="form-grid">
+      <label class="f"><span>Nombre</span><input id="ld_name" value="${esc(cur.name)}"></label>
+      <label class="f"><span>Teléfono</span><input id="ld_phone" value="${esc(cur.phone)}"></label>
+      <label class="f"><span>Email</span><input id="ld_email" value="${esc(cur.email)}"></label>
+      <label class="f"><span>Fuente</span><select id="ld_source">
+        ${['whatsapp','referido','instagram','facebook','web','otro'].map(s=>`<option ${cur.source===s?'selected':''}>${s}</option>`).join('')}
+      </select></label>
+      <label class="f"><span>Interés</span><input id="ld_interest" value="${esc(cur.interest)}" placeholder="Qué servicio quiere"></label>
+      <label class="f"><span>Estado</span><select id="ld_status">${Object.entries(LEAD_STATUS).map(([k,v])=>`<option value="${k}" ${cur.status===k?'selected':''}>${v}</option>`).join('')}</select></label>
+      <label class="f"><span>Valor estimado ($)</span><input type="number" step="0.01" min="0" id="ld_value" value="${cur.value_est||0}"></label>
+      <label class="f"><span>Próxima acción</span><input id="ld_action" value="${esc(cur.next_action||'')}"></label>
+      <label class="f"><span>Fecha próx. acción</span><input type="date" id="ld_nextdate" value="${(cur.next_date||'').slice(0,10)}"></label>
+    </div>
+    <label class="f"><span>Notas</span><textarea id="ld_notes" rows="2">${esc(cur.notes||'')}</textarea></label>
+    <div class="modal-actions"><button class="btn ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn primary" onclick="saveLead('${id||''}')">Guardar</button></div>`);
+}
+async function saveLead(id){
+  const b={name:$('ld_name').value,phone:$('ld_phone').value,email:$('ld_email').value,
+           source:$('ld_source').value,interest:$('ld_interest').value,status:$('ld_status').value,
+           value_est:Number($('ld_value').value||0),next_action:$('ld_action').value,
+           next_date:$('ld_nextdate').value,notes:$('ld_notes').value};
+  if(!b.name.trim()){ toast('Nombre obligatorio',true); return; }
+  try{
+    if(id) await api.send('PUT','/api/leads/'+id,b);
+    else await api.send('POST','/api/leads',b);
+    closeModal(); toast('Prospecto guardado ✓'); renderLeads();
+  }catch(e){ toast(e.message,true); }
+}
+async function delLead(id){
+  if(!confirm('¿Eliminar este prospecto?')) return;
+  try{ await api.send('DELETE','/api/leads/'+id); renderLeads(); }catch(e){ toast(e.message,true); }
+}
+
+// ============================================================
+// REPORTES (placeholder — se expande después)
+// ============================================================
+async function renderReports(){
+  try{
+    const [proj, cash] = await Promise.all([api.get('/api/projects'), api.get('/api/cash')]);
+    const ingresos = cash.filter(x=>x.type==='ingreso').reduce((s,x)=>s+x.amount,0);
+    const gastos = cash.filter(x=>x.type==='gasto').reduce((s,x)=>s+x.amount,0);
+    const active = proj.filter(p=>['planificacion','en_curso','pausado'].includes(p.status)).length;
+    const done = proj.filter(p=>['terminado','cobrado','cerrado'].includes(p.status)).length;
+    const contractSum = proj.reduce((s,p)=>s+(p.contract_value||0)+(p.viaticos_value||0),0);
+    $('reportsContent').innerHTML = `
+      <div class="stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:18px">
+        <div class="stat"><div class="l">Proyectos totales</div><div class="v">${proj.length}</div></div>
+        <div class="stat"><div class="l">Activos</div><div class="v" style="color:var(--cyan2)">${active}</div></div>
+        <div class="stat"><div class="l">Terminados</div><div class="v" style="color:var(--green)">${done}</div></div>
+        <div class="stat"><div class="l">Valor total contratado</div><div class="v">${money(contractSum)}</div></div>
+        <div class="stat"><div class="l">Ingresos en caja</div><div class="v" style="color:var(--green)">${money(ingresos)}</div></div>
+        <div class="stat"><div class="l">Gastos en caja</div><div class="v" style="color:#e55">${money(gastos)}</div></div>
+        <div class="stat"><div class="l">Saldo neto</div><div class="v" style="color:${ingresos-gastos>=0?'var(--cyan2)':'#e55'}">${money(ingresos-gastos)}</div></div>
+      </div>
+      <div class="hint">📊 Más reportes en camino: rentabilidad por proyecto, tasa de conversión de cotizaciones, clientes top, tipos de trabajo más solicitados.</div>
+    `;
+  }catch(e){ $('reportsContent').innerHTML = emptyBox('Error','No se pudieron cargar los reportes'); }
+}
 
 boot();
 </script>

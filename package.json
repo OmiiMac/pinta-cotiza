@@ -1,7 +1,7 @@
 {
-  "name": "pinta-cotiza",
-  "version": "1.0.0",
-  "description": "MESHIPPING // TERMINAL - Sistema de cotizaciones para pintura, gypsum y remodelaciones",
+  "name": "meshipping-system",
+  "version": "2.0.0",
+  "description": "MESHIPPING // TERMINAL - Sistema de gestión empresarial (proyectos, cotizaciones, personal, finanzas)",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

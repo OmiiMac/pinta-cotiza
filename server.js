@@ -1,6 +1,7 @@
 // ============================================================
-// MESHIPPING // TERMINAL  —  pinta-cotiza
-// Sistema de cotizaciones para pintura, gypsum y remodelaciones
+// MESHIPPING // TERMINAL  —  meshipping-system  v2.0
+// Sistema de gestión empresarial: proyectos, cotizaciones, personal,
+// finanzas, inventario, agenda, reportes
 // Node 24 + node:sqlite (sin dependencias nativas) + Express
 // ============================================================
 const express = require('express');
@@ -117,6 +118,193 @@ CREATE TABLE IF NOT EXISTS plans (
   created_at TEXT,
   updated_at TEXT
 );
+
+-- ========= MESHIPPING-SYSTEM v2.0 — tablas empresariales =========
+
+CREATE TABLE IF NOT EXISTS projects (
+  id             TEXT PRIMARY KEY,
+  number         TEXT,
+  name           TEXT NOT NULL,
+  client_id      TEXT,
+  quote_id       TEXT,
+  type           TEXT DEFAULT 'general',   -- papel-ahumado, pintura, gypsum, remodelacion, general
+  status         TEXT DEFAULT 'planificacion', -- planificacion, en_curso, pausado, terminado, cobrado, cerrado, cancelado
+  location       TEXT,
+  start_date     TEXT,
+  end_date       TEXT,
+  measure_unit   TEXT DEFAULT 'm2',       -- m2 o ft (lineal) según el proyecto
+  measure_total  REAL DEFAULT 0,
+  contract_value REAL DEFAULT 0,          -- valor contratado con cliente
+  viaticos_value REAL DEFAULT 0,          -- valor de viáticos cobrado
+  notes          TEXT,
+  created_at     TEXT,
+  updated_at     TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_projects_status ON projects(status);
+CREATE INDEX IF NOT EXISTS idx_projects_client ON projects(client_id);
+
+CREATE TABLE IF NOT EXISTS project_phases (
+  id          TEXT PRIMARY KEY,
+  project_id  TEXT NOT NULL,
+  position    INTEGER DEFAULT 0,
+  name        TEXT NOT NULL,
+  description TEXT,
+  status      TEXT DEFAULT 'pendiente',   -- pendiente, en_curso, completado
+  planned_start TEXT,
+  planned_end   TEXT,
+  actual_start  TEXT,
+  actual_end    TEXT,
+  created_at  TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_phases_project ON project_phases(project_id);
+
+CREATE TABLE IF NOT EXISTS project_expenses (
+  id          TEXT PRIMARY KEY,
+  project_id  TEXT NOT NULL,
+  date        TEXT,
+  category    TEXT,                       -- materiales, personal, viaticos, combustible, alquiler, otros
+  description TEXT,
+  amount      REAL DEFAULT 0,
+  paid_to     TEXT,                       -- a quién se pagó (proveedor / trabajador)
+  receipt     TEXT,                       -- URL o referencia de boleta
+  notes       TEXT,
+  created_at  TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_expenses_project ON project_expenses(project_id);
+CREATE INDEX IF NOT EXISTS idx_expenses_date ON project_expenses(date);
+
+CREATE TABLE IF NOT EXISTS project_payments (
+  id          TEXT PRIMARY KEY,
+  project_id  TEXT NOT NULL,
+  date        TEXT,
+  type        TEXT,                       -- adelanto, parcial, final, viaticos, extra
+  amount      REAL DEFAULT 0,
+  method      TEXT,                       -- efectivo, yappy, transferencia, cheque
+  reference   TEXT,
+  notes       TEXT,
+  created_at  TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_payments_project ON project_payments(project_id);
+
+CREATE TABLE IF NOT EXISTS project_photos (
+  id          TEXT PRIMARY KEY,
+  project_id  TEXT NOT NULL,
+  phase       TEXT,                       -- antes, durante, despues
+  url         TEXT,                       -- data URL o referencia
+  caption     TEXT,
+  created_at  TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_photos_project ON project_photos(project_id);
+
+CREATE TABLE IF NOT EXISTS personnel (
+  id            TEXT PRIMARY KEY,
+  name          TEXT NOT NULL,
+  specialty     TEXT,                     -- pintor, instalador-tint, ayudante, chofer, gypsum, general
+  phone         TEXT,
+  email         TEXT,
+  id_number     TEXT,                     -- cédula
+  address       TEXT,
+  rate_m2       REAL DEFAULT 0,           -- tarifa por m² de pintura/gypsum
+  rate_ft       REAL DEFAULT 0,           -- tarifa por ft lineal (papel ahumado)
+  rate_day      REAL DEFAULT 0,           -- tarifa por día
+  rate_global   REAL DEFAULT 0,           -- tarifa fija por proyecto (si aplica)
+  notes         TEXT,
+  active        INTEGER DEFAULT 1,
+  created_at    TEXT,
+  updated_at    TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_personnel_active ON personnel(active);
+
+CREATE TABLE IF NOT EXISTS project_personnel (
+  id            TEXT PRIMARY KEY,
+  project_id    TEXT NOT NULL,
+  personnel_id  TEXT NOT NULL,
+  role          TEXT,                     -- líder, instalador, ayudante, chofer
+  rate_type     TEXT,                     -- m2, ft, day, global
+  rate_value    REAL DEFAULT 0,           -- tarifa pactada para este proyecto
+  qty           REAL DEFAULT 0,           -- cantidad (m², ft, días trabajados)
+  total_pay     REAL DEFAULT 0,           -- total a pagar
+  paid          REAL DEFAULT 0,           -- ya pagado
+  notes         TEXT,
+  created_at    TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_pp_project ON project_personnel(project_id);
+CREATE INDEX IF NOT EXISTS idx_pp_personnel ON project_personnel(personnel_id);
+
+CREATE TABLE IF NOT EXISTS cash_movements (
+  id          TEXT PRIMARY KEY,
+  date        TEXT,
+  type        TEXT,                       -- ingreso, gasto
+  category    TEXT,                       -- cobro-proyecto, gasto-proyecto, administrativo, personal, otro
+  project_id  TEXT,                       -- opcional, si está asociado a un proyecto
+  description TEXT,
+  amount      REAL DEFAULT 0,
+  method      TEXT,                       -- efectivo, banco, yappy
+  notes       TEXT,
+  created_at  TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_cash_date ON cash_movements(date);
+CREATE INDEX IF NOT EXISTS idx_cash_project ON cash_movements(project_id);
+
+CREATE TABLE IF NOT EXISTS inventory_items (
+  id          TEXT PRIMARY KEY,
+  name        TEXT NOT NULL,
+  category    TEXT,                       -- pintura, herramienta, papel-ahumado, consumible
+  unit        TEXT DEFAULT 'und',
+  stock       REAL DEFAULT 0,
+  min_stock   REAL DEFAULT 0,
+  avg_cost    REAL DEFAULT 0,             -- costo promedio por unidad
+  location    TEXT,                       -- dónde está guardado
+  notes       TEXT,
+  created_at  TEXT,
+  updated_at  TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_inv_category ON inventory_items(category);
+
+CREATE TABLE IF NOT EXISTS inventory_moves (
+  id          TEXT PRIMARY KEY,
+  item_id     TEXT NOT NULL,
+  date        TEXT,
+  type        TEXT,                       -- entrada, salida
+  qty         REAL DEFAULT 0,
+  cost        REAL DEFAULT 0,             -- costo unitario
+  project_id  TEXT,                       -- si se consumió en un proyecto
+  notes       TEXT,
+  created_at  TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_invmov_item ON inventory_moves(item_id);
+
+CREATE TABLE IF NOT EXISTS agenda_events (
+  id          TEXT PRIMARY KEY,
+  date        TEXT,
+  time        TEXT,
+  type        TEXT,                       -- visita, instalacion, cobro, reunion, otro
+  title       TEXT,
+  project_id  TEXT,
+  client_id   TEXT,
+  location    TEXT,
+  notes       TEXT,
+  done        INTEGER DEFAULT 0,
+  created_at  TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_agenda_date ON agenda_events(date);
+
+CREATE TABLE IF NOT EXISTS leads (
+  id          TEXT PRIMARY KEY,
+  name        TEXT NOT NULL,
+  phone       TEXT,
+  email       TEXT,
+  source      TEXT,                       -- whatsapp, referido, instagram, web, otro
+  interest    TEXT,                       -- qué le interesa
+  status      TEXT DEFAULT 'nuevo',       -- nuevo, contactado, cotizado, ganado, perdido
+  value_est   REAL DEFAULT 0,
+  next_action TEXT,
+  next_date   TEXT,
+  notes       TEXT,
+  created_at  TEXT,
+  updated_at  TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_leads_status ON leads(status);
 `);
 
 // ---------- Migraciones suaves (agrega columnas nuevas a DBs ya creadas) ----------
@@ -517,12 +705,341 @@ app.delete('/api/plans/:id', wrap((req, res) => {
   res.json({ ok: true });
 }));
 
+// ============================================================
+// PROYECTOS
+// ============================================================
+function projectNumber(){
+  const n = Number(metaGet('next_project_number') || 1);
+  metaSet('next_project_number', n + 1);
+  const year = new Date().getFullYear();
+  return `PRJ-${year}-${String(n).padStart(4, '0')}`;
+}
+function getProjectFull(id){
+  const p = db.prepare('SELECT * FROM projects WHERE id=?').get(id);
+  if (!p) return null;
+  p.client = p.client_id ? db.prepare('SELECT * FROM clients WHERE id=?').get(p.client_id) : null;
+  p.phases = db.prepare('SELECT * FROM project_phases WHERE project_id=? ORDER BY position, rowid').all(id);
+  p.expenses = db.prepare('SELECT * FROM project_expenses WHERE project_id=? ORDER BY date DESC, rowid DESC').all(id);
+  p.payments = db.prepare('SELECT * FROM project_payments WHERE project_id=? ORDER BY date DESC, rowid DESC').all(id);
+  p.personnel = db.prepare(`SELECT pp.*, pe.name AS personnel_name, pe.specialty
+                            FROM project_personnel pp
+                            LEFT JOIN personnel pe ON pe.id = pp.personnel_id
+                            WHERE pp.project_id=? ORDER BY pp.rowid`).all(id);
+  p.photos = db.prepare('SELECT * FROM project_photos WHERE project_id=? ORDER BY created_at').all(id);
+  // Totales
+  p.total_expenses = p.expenses.reduce((s,x)=>s+num(x.amount),0);
+  p.total_payments = p.payments.reduce((s,x)=>s+num(x.amount),0);
+  p.total_personnel_cost = p.personnel.reduce((s,x)=>s+num(x.total_pay),0);
+  p.total_personnel_paid = p.personnel.reduce((s,x)=>s+num(x.paid),0);
+  p.profit = p.total_payments - p.total_expenses - p.total_personnel_cost;
+  p.balance_due = num(p.contract_value) + num(p.viaticos_value) - p.total_payments;
+  return p;
+}
+
+app.get('/api/projects', wrap((req, res) => {
+  const list = db.prepare(`
+    SELECT p.*, c.name AS client_name
+    FROM projects p LEFT JOIN clients c ON c.id = p.client_id
+    ORDER BY p.created_at DESC
+  `).all();
+  res.json(list);
+}));
+
+app.get('/api/projects/:id', wrap((req, res) => {
+  const p = getProjectFull(req.params.id);
+  if (!p) return res.status(404).json({ error: 'No encontrado' });
+  res.json(p);
+}));
+
+app.post('/api/projects', wrap((req, res) => {
+  const b = req.body || {};
+  const id = uid();
+  db.prepare(`INSERT INTO projects
+    (id, number, name, client_id, quote_id, type, status, location, start_date, end_date,
+     measure_unit, measure_total, contract_value, viaticos_value, notes, created_at, updated_at)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+    .run(id, b.number || projectNumber(), str(b.name).trim() || 'Proyecto sin nombre',
+         b.client_id || null, b.quote_id || null, str(b.type) || 'general',
+         str(b.status) || 'planificacion', str(b.location), b.start_date || null, b.end_date || null,
+         str(b.measure_unit) || 'm2', num(b.measure_total), num(b.contract_value), num(b.viaticos_value),
+         str(b.notes), now(), now());
+  res.json(getProjectFull(id));
+}));
+
+app.put('/api/projects/:id', wrap((req, res) => {
+  const b = req.body || {};
+  const cur = db.prepare('SELECT * FROM projects WHERE id=?').get(req.params.id);
+  if (!cur) return res.status(404).json({ error: 'No encontrado' });
+  db.prepare(`UPDATE projects SET name=?, client_id=?, type=?, status=?, location=?,
+    start_date=?, end_date=?, measure_unit=?, measure_total=?, contract_value=?, viaticos_value=?,
+    notes=?, updated_at=? WHERE id=?`)
+    .run(str(b.name).trim() || cur.name, b.client_id || null, str(b.type) || cur.type,
+         str(b.status) || cur.status, str(b.location), b.start_date || null, b.end_date || null,
+         str(b.measure_unit) || cur.measure_unit, num(b.measure_total), num(b.contract_value),
+         num(b.viaticos_value), str(b.notes), now(), cur.id);
+  res.json(getProjectFull(cur.id));
+}));
+
+app.delete('/api/projects/:id', wrap((req, res) => {
+  tx(() => {
+    ['project_phases','project_expenses','project_payments','project_personnel','project_photos']
+      .forEach(t => db.prepare(`DELETE FROM ${t} WHERE project_id=?`).run(req.params.id));
+    db.prepare('DELETE FROM projects WHERE id=?').run(req.params.id);
+  });
+  res.json({ ok: true });
+}));
+
+// Crear proyecto a partir de una cotización existente
+app.post('/api/projects/from-quote/:quoteId', wrap((req, res) => {
+  const q = db.prepare('SELECT * FROM quotes WHERE id=?').get(req.params.quoteId);
+  if (!q) return res.status(404).json({ error: 'Cotización no encontrada' });
+  const b = req.body || {};
+  // detectar unidad y total de medida de las partidas
+  const items = db.prepare('SELECT * FROM quote_items WHERE quote_id=?').all(q.id);
+  let unit = 'm2', total = 0;
+  const ftItem = items.find(it => it.unit === 'ft');
+  if (ftItem) { unit = 'ft'; total = items.filter(it=>it.unit==='ft').reduce((s,it)=>s+num(it.qty),0); }
+  else { total = items.reduce((s,it)=>s+num(it.qty),0); }
+  const id = uid();
+  db.prepare(`INSERT INTO projects
+    (id, number, name, client_id, quote_id, type, status, location, measure_unit, measure_total,
+     contract_value, viaticos_value, notes, created_at, updated_at)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+    .run(id, projectNumber(), str(q.title) || 'Proyecto desde '+q.number,
+         q.client_id, q.id, str(b.type) || 'general', 'planificacion',
+         str(b.location), unit, total, num(q.total),
+         num(b.viaticos_value), str(b.notes) || str(q.notes), now(), now());
+  res.json(getProjectFull(id));
+}));
+
+// Fases
+app.post('/api/projects/:id/phases', wrap((req, res) => {
+  const b = req.body || {}; const id = uid();
+  const max = db.prepare('SELECT COALESCE(MAX(position),-1) m FROM project_phases WHERE project_id=?').get(req.params.id).m;
+  db.prepare(`INSERT INTO project_phases
+    (id, project_id, position, name, description, status, planned_start, planned_end, created_at)
+    VALUES (?,?,?,?,?,?,?,?,?)`)
+    .run(id, req.params.id, b.position != null ? Number(b.position) : (max+1),
+         str(b.name) || 'Fase', str(b.description), str(b.status) || 'pendiente',
+         b.planned_start || null, b.planned_end || null, now());
+  res.json({ id });
+}));
+app.put('/api/phases/:id', wrap((req, res) => {
+  const b = req.body || {};
+  db.prepare(`UPDATE project_phases SET name=?, description=?, status=?, planned_start=?, planned_end=?,
+    actual_start=?, actual_end=? WHERE id=?`)
+    .run(str(b.name), str(b.description), str(b.status) || 'pendiente',
+         b.planned_start || null, b.planned_end || null, b.actual_start || null, b.actual_end || null,
+         req.params.id);
+  res.json({ ok: true });
+}));
+app.delete('/api/phases/:id', wrap((req, res) => {
+  db.prepare('DELETE FROM project_phases WHERE id=?').run(req.params.id);
+  res.json({ ok: true });
+}));
+
+// Gastos
+app.post('/api/projects/:id/expenses', wrap((req, res) => {
+  const b = req.body || {}; const id = uid();
+  db.prepare(`INSERT INTO project_expenses
+    (id, project_id, date, category, description, amount, paid_to, receipt, notes, created_at)
+    VALUES (?,?,?,?,?,?,?,?,?,?)`)
+    .run(id, req.params.id, b.date || now().slice(0,10), str(b.category) || 'otros',
+         str(b.description), num(b.amount), str(b.paid_to), str(b.receipt), str(b.notes), now());
+  res.json({ id });
+}));
+app.delete('/api/expenses/:id', wrap((req, res) => {
+  db.prepare('DELETE FROM project_expenses WHERE id=?').run(req.params.id);
+  res.json({ ok: true });
+}));
+
+// Pagos recibidos
+app.post('/api/projects/:id/payments', wrap((req, res) => {
+  const b = req.body || {}; const id = uid();
+  db.prepare(`INSERT INTO project_payments
+    (id, project_id, date, type, amount, method, reference, notes, created_at)
+    VALUES (?,?,?,?,?,?,?,?,?)`)
+    .run(id, req.params.id, b.date || now().slice(0,10), str(b.type) || 'parcial',
+         num(b.amount), str(b.method), str(b.reference), str(b.notes), now());
+  res.json({ id });
+}));
+app.delete('/api/payments/:id', wrap((req, res) => {
+  db.prepare('DELETE FROM project_payments WHERE id=?').run(req.params.id);
+  res.json({ ok: true });
+}));
+
+// Personal asignado a proyecto
+app.post('/api/projects/:id/personnel', wrap((req, res) => {
+  const b = req.body || {}; const id = uid();
+  const totalPay = num(b.rate_value) * num(b.qty);
+  db.prepare(`INSERT INTO project_personnel
+    (id, project_id, personnel_id, role, rate_type, rate_value, qty, total_pay, paid, notes, created_at)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?)`)
+    .run(id, req.params.id, b.personnel_id, str(b.role), str(b.rate_type) || 'day',
+         num(b.rate_value), num(b.qty), totalPay, num(b.paid), str(b.notes), now());
+  res.json({ id });
+}));
+app.put('/api/project-personnel/:id', wrap((req, res) => {
+  const b = req.body || {};
+  const totalPay = num(b.rate_value) * num(b.qty);
+  db.prepare(`UPDATE project_personnel SET role=?, rate_type=?, rate_value=?, qty=?, total_pay=?, paid=?, notes=? WHERE id=?`)
+    .run(str(b.role), str(b.rate_type) || 'day', num(b.rate_value), num(b.qty), totalPay, num(b.paid), str(b.notes), req.params.id);
+  res.json({ ok: true });
+}));
+app.delete('/api/project-personnel/:id', wrap((req, res) => {
+  db.prepare('DELETE FROM project_personnel WHERE id=?').run(req.params.id);
+  res.json({ ok: true });
+}));
+
+// ============================================================
+// PERSONAL / CONTRATISTAS
+// ============================================================
+app.get('/api/personnel', wrap((req, res) => {
+  res.json(db.prepare('SELECT * FROM personnel ORDER BY active DESC, name').all());
+}));
+app.post('/api/personnel', wrap((req, res) => {
+  const b = req.body || {}; const id = uid();
+  db.prepare(`INSERT INTO personnel
+    (id, name, specialty, phone, email, id_number, address, rate_m2, rate_ft, rate_day, rate_global, notes, active, created_at, updated_at)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+    .run(id, str(b.name).trim(), str(b.specialty), str(b.phone), str(b.email), str(b.id_number),
+         str(b.address), num(b.rate_m2), num(b.rate_ft), num(b.rate_day), num(b.rate_global),
+         str(b.notes), b.active != null ? (b.active?1:0) : 1, now(), now());
+  res.json({ id });
+}));
+app.put('/api/personnel/:id', wrap((req, res) => {
+  const b = req.body || {};
+  db.prepare(`UPDATE personnel SET name=?, specialty=?, phone=?, email=?, id_number=?, address=?,
+    rate_m2=?, rate_ft=?, rate_day=?, rate_global=?, notes=?, active=?, updated_at=? WHERE id=?`)
+    .run(str(b.name).trim(), str(b.specialty), str(b.phone), str(b.email), str(b.id_number),
+         str(b.address), num(b.rate_m2), num(b.rate_ft), num(b.rate_day), num(b.rate_global),
+         str(b.notes), b.active ? 1 : 0, now(), req.params.id);
+  res.json({ ok: true });
+}));
+app.delete('/api/personnel/:id', wrap((req, res) => {
+  db.prepare('DELETE FROM personnel WHERE id=?').run(req.params.id);
+  res.json({ ok: true });
+}));
+
+// ============================================================
+// FINANZAS / CAJA
+// ============================================================
+app.get('/api/cash', wrap((req, res) => {
+  const list = db.prepare(`SELECT c.*, p.name AS project_name
+    FROM cash_movements c LEFT JOIN projects p ON p.id = c.project_id
+    ORDER BY c.date DESC, c.rowid DESC`).all();
+  res.json(list);
+}));
+app.post('/api/cash', wrap((req, res) => {
+  const b = req.body || {}; const id = uid();
+  db.prepare(`INSERT INTO cash_movements
+    (id, date, type, category, project_id, description, amount, method, notes, created_at)
+    VALUES (?,?,?,?,?,?,?,?,?,?)`)
+    .run(id, b.date || now().slice(0,10), str(b.type) || 'ingreso', str(b.category),
+         b.project_id || null, str(b.description), num(b.amount), str(b.method), str(b.notes), now());
+  res.json({ id });
+}));
+app.delete('/api/cash/:id', wrap((req, res) => {
+  db.prepare('DELETE FROM cash_movements WHERE id=?').run(req.params.id);
+  res.json({ ok: true });
+}));
+
+// ============================================================
+// AGENDA
+// ============================================================
+app.get('/api/agenda', wrap((req, res) => {
+  res.json(db.prepare('SELECT * FROM agenda_events ORDER BY date, time').all());
+}));
+app.post('/api/agenda', wrap((req, res) => {
+  const b = req.body || {}; const id = uid();
+  db.prepare(`INSERT INTO agenda_events
+    (id, date, time, type, title, project_id, client_id, location, notes, done, created_at)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?)`)
+    .run(id, b.date || now().slice(0,10), str(b.time), str(b.type) || 'otro',
+         str(b.title), b.project_id || null, b.client_id || null,
+         str(b.location), str(b.notes), b.done ? 1 : 0, now());
+  res.json({ id });
+}));
+app.put('/api/agenda/:id', wrap((req, res) => {
+  const b = req.body || {};
+  db.prepare(`UPDATE agenda_events SET date=?, time=?, type=?, title=?, project_id=?, client_id=?,
+    location=?, notes=?, done=? WHERE id=?`)
+    .run(b.date, str(b.time), str(b.type), str(b.title), b.project_id || null, b.client_id || null,
+         str(b.location), str(b.notes), b.done ? 1 : 0, req.params.id);
+  res.json({ ok: true });
+}));
+app.delete('/api/agenda/:id', wrap((req, res) => {
+  db.prepare('DELETE FROM agenda_events WHERE id=?').run(req.params.id);
+  res.json({ ok: true });
+}));
+
+// ============================================================
+// INVENTARIO
+// ============================================================
+app.get('/api/inventory', wrap((req, res) => {
+  res.json(db.prepare('SELECT * FROM inventory_items ORDER BY name').all());
+}));
+app.post('/api/inventory', wrap((req, res) => {
+  const b = req.body || {}; const id = uid();
+  db.prepare(`INSERT INTO inventory_items
+    (id, name, category, unit, stock, min_stock, avg_cost, location, notes, created_at, updated_at)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?)`)
+    .run(id, str(b.name).trim(), str(b.category), str(b.unit) || 'und',
+         num(b.stock), num(b.min_stock), num(b.avg_cost), str(b.location), str(b.notes), now(), now());
+  res.json({ id });
+}));
+app.put('/api/inventory/:id', wrap((req, res) => {
+  const b = req.body || {};
+  db.prepare(`UPDATE inventory_items SET name=?, category=?, unit=?, stock=?, min_stock=?, avg_cost=?,
+    location=?, notes=?, updated_at=? WHERE id=?`)
+    .run(str(b.name).trim(), str(b.category), str(b.unit) || 'und', num(b.stock),
+         num(b.min_stock), num(b.avg_cost), str(b.location), str(b.notes), now(), req.params.id);
+  res.json({ ok: true });
+}));
+app.delete('/api/inventory/:id', wrap((req, res) => {
+  db.prepare('DELETE FROM inventory_items WHERE id=?').run(req.params.id);
+  res.json({ ok: true });
+}));
+
+// ============================================================
+// LEADS / CRM
+// ============================================================
+app.get('/api/leads', wrap((req, res) => {
+  res.json(db.prepare('SELECT * FROM leads ORDER BY updated_at DESC').all());
+}));
+app.post('/api/leads', wrap((req, res) => {
+  const b = req.body || {}; const id = uid();
+  db.prepare(`INSERT INTO leads
+    (id, name, phone, email, source, interest, status, value_est, next_action, next_date, notes, created_at, updated_at)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+    .run(id, str(b.name).trim(), str(b.phone), str(b.email), str(b.source), str(b.interest),
+         str(b.status) || 'nuevo', num(b.value_est), str(b.next_action), b.next_date || null,
+         str(b.notes), now(), now());
+  res.json({ id });
+}));
+app.put('/api/leads/:id', wrap((req, res) => {
+  const b = req.body || {};
+  db.prepare(`UPDATE leads SET name=?, phone=?, email=?, source=?, interest=?, status=?, value_est=?,
+    next_action=?, next_date=?, notes=?, updated_at=? WHERE id=?`)
+    .run(str(b.name).trim(), str(b.phone), str(b.email), str(b.source), str(b.interest),
+         str(b.status), num(b.value_est), str(b.next_action), b.next_date || null,
+         str(b.notes), now(), req.params.id);
+  res.json({ ok: true });
+}));
+app.delete('/api/leads/:id', wrap((req, res) => {
+  db.prepare('DELETE FROM leads WHERE id=?').run(req.params.id);
+  res.json({ ok: true });
+}));
+
 // ---------- Resumen / dashboard ----------
 app.get('/api/summary', wrap((req, res) => {
   const byStatus = db.prepare('SELECT status, COUNT(*) n, COALESCE(SUM(total),0) monto FROM quotes GROUP BY status').all();
   const totals = db.prepare('SELECT COUNT(*) n, COALESCE(SUM(total),0) monto FROM quotes').get();
   const clients = db.prepare('SELECT COUNT(*) n FROM clients').get();
-  res.json({ byStatus, totals, clients: clients.n });
+  const projects = db.prepare('SELECT COUNT(*) n, COALESCE(SUM(contract_value+viaticos_value),0) monto FROM projects').get();
+  const activeProjects = db.prepare("SELECT COUNT(*) n FROM projects WHERE status IN ('planificacion','en_curso','pausado')").get();
+  const personnel = db.prepare('SELECT COUNT(*) n FROM personnel WHERE active=1').get();
+  res.json({ byStatus, totals, clients: clients.n, projects, activeProjects: activeProjects.n, personnel: personnel.n });
 }));
 
 // ============================================================
