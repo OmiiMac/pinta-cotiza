@@ -699,7 +699,19 @@ app.post('/api/quotes/:id/duplicate', wrap((req, res) => {
 }));
 
 app.delete('/api/quotes/:id', wrap((req, res) => {
+  // No dejar proyectos ni planos apuntando a una cotizacion borrada
+  const linked = db.prepare('SELECT number, name FROM projects WHERE quote_id=?').all(req.params.id);
+  if (linked.length && req.query.force !== '1') {
+    return res.status(409).json({
+      error: 'Esta cotización tiene ' + linked.length + ' proyecto(s) vinculado(s): ' +
+             linked.map(p => p.number).join(', ') +
+             '. Vincúlalos a otra cotización primero, o repite con ?force=1 para desvincularlos.',
+      projects: linked
+    });
+  }
   tx(() => {
+    db.prepare('UPDATE projects SET quote_id=NULL WHERE quote_id=?').run(req.params.id);
+    db.prepare('UPDATE plans SET quote_id=NULL WHERE quote_id=?').run(req.params.id);
     db.prepare('DELETE FROM quote_items WHERE quote_id=?').run(req.params.id);
     db.prepare('DELETE FROM quotes WHERE id=?').run(req.params.id);
   });
@@ -836,10 +848,12 @@ app.put('/api/projects/:id', wrap((req, res) => {
   const b = req.body || {};
   const cur = db.prepare('SELECT * FROM projects WHERE id=?').get(req.params.id);
   if (!cur) return res.status(404).json({ error: 'No encontrado' });
-  db.prepare(`UPDATE projects SET name=?, client_id=?, type=?, status=?, location=?,
+  db.prepare(`UPDATE projects SET name=?, client_id=?, quote_id=?, type=?, status=?, location=?,
     start_date=?, end_date=?, measure_unit=?, measure_total=?, contract_value=?, viaticos_value=?,
     notes=?, updated_at=? WHERE id=?`)
-    .run(str(b.name).trim() || cur.name, b.client_id || null, str(b.type) || cur.type,
+    .run(str(b.name).trim() || cur.name, b.client_id || null,
+         b.quote_id !== undefined ? (b.quote_id || null) : cur.quote_id,
+         str(b.type) || cur.type,
          str(b.status) || cur.status, str(b.location), b.start_date || null, b.end_date || null,
          str(b.measure_unit) || cur.measure_unit, num(b.measure_total), num(b.contract_value),
          num(b.viaticos_value), str(b.notes), now(), cur.id);

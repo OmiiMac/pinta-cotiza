@@ -1890,7 +1890,17 @@ function quoteTable(list){
 async function delQuote(id,num){
   if(!confirm('¿Eliminar cotización '+num+'? Esta acción no se puede deshacer.')) return;
   try{ await api.send('DELETE','/api/quotes/'+id); toast('Cotización eliminada'); renderQuotes(); renderDash(); }
-  catch(e){ toast(e.message,true); }
+  catch(e){
+    // El servidor avisa si hay proyectos vinculados; ofrecemos desvincularlos
+    if(/proyecto\(s\) vinculado/.test(e.message||'')){
+      if(confirm(e.message+'\n\n¿Desvincular esos proyectos y eliminar la cotización de todas formas?')){
+        try{ await api.send('DELETE','/api/quotes/'+id+'?force=1'); toast('Cotización eliminada y proyectos desvinculados'); renderQuotes(); renderDash(); }
+        catch(e2){ toast(e2.message,true); }
+      }
+      return;
+    }
+    toast(e.message,true);
+  }
 }
 async function renderQuotes(){
   try{ S.quotes = await api.get('/api/quotes'); }catch(e){}
