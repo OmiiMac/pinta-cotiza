@@ -316,6 +316,11 @@ ensureCol('quote_items', 'cost_type', "TEXT DEFAULT 'otro'");
 ensureCol('catalog',     'cost_type', "TEXT DEFAULT 'materiales'");
 ensureCol('catalog',     'image',     "TEXT");
 ensureCol('quotes',      'margin_pct', "REAL DEFAULT 0");
+// Partidas exentas de impuesto y/o sin margen (v2.2) — p.ej. viáticos reembolsables
+ensureCol('quote_items', 'taxable',      "INTEGER DEFAULT 1");
+ensureCol('quote_items', 'apply_margin', "INTEGER DEFAULT 1");
+ensureCol('quotes',      'taxable_base', "REAL DEFAULT 0");
+ensureCol('quotes',      'exempt_base',  "REAL DEFAULT 0");
 // Unificación clientes + prospectos (v2.1)
 ensureCol('clients',     'status',      "TEXT DEFAULT 'cliente'");  // cliente, prospecto, ganado, perdido
 ensureCol('clients',     'source',      "TEXT");                    // whatsapp, referido, instagram, web, otro
@@ -399,25 +404,48 @@ function computeItem(it) {
   return { qty, lineTotal };
 }
 
-// Recalcula todos los totales de una cotizacion a partir de sus partidas
+// Recalcula todos los totales de una cotizacion a partir de sus partidas.
+// Cada partida puede:
+//   - recibir o no el margen de ganancia (apply_margin)
+//   - estar gravada o exenta del impuesto (taxable)
+// Esto permite cobrar viaticos al costo y sin ITBMS dentro de la misma cotizacion.
 function computeTotals(quote, items) {
-  // La suma de las partidas es el COSTO; se le aplica la ganancia (margin_pct)
-  // para obtener el precio de venta (subtotal).
-  let cost = 0;
-  for (const it of items) cost += num(it.line_total);
+  const marginPct = num(quote.margin_pct);
+  let cost = 0;          // costo total de todas las partidas
+  let baseTaxable = 0;   // precio de venta de las partidas gravadas
+  let baseExempt = 0;    // precio de venta de las partidas exentas
+
+  for (const it of items) {
+    const line = num(it.line_total);
+    cost += line;
+    // apply_margin indefinido = true (compatibilidad con partidas antiguas)
+    const withMargin = (it.apply_margin === undefined || it.apply_margin === null)
+      ? true : !!Number(it.apply_margin);
+    const sale = withMargin ? line * (1 + marginPct / 100) : line;
+    const isTaxable = (it.taxable === undefined || it.taxable === null)
+      ? true : !!Number(it.taxable);
+    if (isTaxable) baseTaxable += sale; else baseExempt += sale;
+  }
   cost = r2(cost);
-  const marginAmount = r2(cost * num(quote.margin_pct) / 100);
-  const subtotal = r2(cost + marginAmount); // precio de venta antes de descuento
+  baseTaxable = r2(baseTaxable);
+  baseExempt = r2(baseExempt);
+  const subtotal = r2(baseTaxable + baseExempt);
 
   let discount = 0;
   if (quote.discount_type === 'percent') discount = r2(subtotal * num(quote.discount_value) / 100);
   else if (quote.discount_type === 'amount') discount = r2(num(quote.discount_value));
   discount = Math.min(discount, subtotal);
 
-  const taxable = r2(subtotal - discount);
-  const taxAmount = r2(taxable * num(quote.tax_rate) / 100);
-  const total = r2(taxable + taxAmount);
-  return { subtotal, discount_amount: discount, tax_amount: taxAmount, total };
+  // El descuento se reparte proporcionalmente para no gravar de mas lo exento
+  const shareTaxable = subtotal > 0 ? baseTaxable / subtotal : 0;
+  const netTaxable = r2(baseTaxable - discount * shareTaxable);
+  const taxAmount = r2(netTaxable * num(quote.tax_rate) / 100);
+  const total = r2(subtotal - discount + taxAmount);
+
+  return {
+    subtotal, discount_amount: discount, tax_amount: taxAmount, total,
+    taxable_base: baseTaxable, exempt_base: baseExempt
+  };
 }
 
 function getQuoteFull(id) {
@@ -433,8 +461,8 @@ function saveQuoteItems(quoteId, rawItems, quote) {
   const items = Array.isArray(rawItems) ? rawItems : [];
   db.prepare('DELETE FROM quote_items WHERE quote_id=?').run(quoteId);
   const ins = db.prepare(`INSERT INTO quote_items
-    (id, quote_id, position, category, cost_type, description, unit, is_area, width, height, qcount, deduction, qty, unit_price, coats, paint_yield, line_total, notes)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
+    (id, quote_id, position, category, cost_type, description, unit, is_area, width, height, qcount, deduction, qty, unit_price, coats, paint_yield, line_total, notes, taxable, apply_margin)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
   const stored = [];
   items.forEach((it, i) => {
     const isArea = it.is_area ? 1 : 0;
@@ -447,16 +475,21 @@ function saveQuoteItems(quoteId, rawItems, quote) {
       width: num(it.width), height: num(it.height), qcount: num(it.qcount, 1),
       deduction: num(it.deduction), qty, unit_price: num(it.unit_price),
       coats: num(it.coats, 2), paint_yield: it.paint_yield == null ? null : num(it.paint_yield),
-      line_total: lineTotal, notes: str(it.notes)
+      line_total: lineTotal, notes: str(it.notes),
+      // Por defecto toda partida es gravable y recibe margen
+      taxable:      (it.taxable      === 0 || it.taxable      === false) ? 0 : 1,
+      apply_margin: (it.apply_margin === 0 || it.apply_margin === false) ? 0 : 1
     };
     ins.run(row.id, quoteId, row.position, row.category, row.cost_type, row.description, row.unit, row.is_area,
       row.width, row.height, row.qcount, row.deduction, row.qty, row.unit_price, row.coats,
-      row.paint_yield, row.line_total, row.notes);
+      row.paint_yield, row.line_total, row.notes, row.taxable, row.apply_margin);
     stored.push(row);
   });
   const totals = computeTotals(quote, stored);
-  db.prepare(`UPDATE quotes SET subtotal=?, discount_amount=?, tax_amount=?, total=?, updated_at=? WHERE id=?`)
-    .run(totals.subtotal, totals.discount_amount, totals.tax_amount, totals.total, now(), quoteId);
+  db.prepare(`UPDATE quotes SET subtotal=?, discount_amount=?, tax_amount=?, total=?,
+      taxable_base=?, exempt_base=?, updated_at=? WHERE id=?`)
+    .run(totals.subtotal, totals.discount_amount, totals.tax_amount, totals.total,
+         totals.taxable_base, totals.exempt_base, now(), quoteId);
   return totals;
 }
 

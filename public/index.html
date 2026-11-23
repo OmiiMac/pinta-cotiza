@@ -1211,6 +1211,8 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
           <div class="row" id="t_margin_row" style="display:none"><span id="t_margin_lbl">Ganancia</span><span id="t_margin" style="color:var(--green)">$0.00</span></div>
           <div class="row"><span>Subtotal</span><span id="t_sub">$0.00</span></div>
           <div class="row" id="t_disc_row" style="display:none"><span>Descuento</span><span id="t_disc">-$0.00</span></div>
+          <div class="row" id="t_taxbase_row" style="display:none"><span style="font-size:12px;color:var(--muted)">↳ Base gravable</span><span id="t_taxbase" style="font-size:12px;color:var(--muted)">$0.00</span></div>
+          <div class="row" id="t_exempt_row" style="display:none"><span style="font-size:12px;color:var(--muted)">↳ Exento de impuesto</span><span id="t_exempt" style="font-size:12px;color:var(--cyan2)">$0.00</span></div>
           <div class="row"><span id="t_tax_lbl">ITBMS</span><span id="t_tax">$0.00</span></div>
           <div class="row grand"><span>TOTAL</span><b id="t_total">$0.00</b></div>
         </div>
@@ -1908,7 +1910,7 @@ const COST_TYPES=[['pintura','Pintura'],['materiales','Materiales'],['mano-obra'
 const COST_LBL=Object.fromEntries(COST_TYPES);
 const COST_ICON={pintura:'🎨',materiales:'📦','mano-obra':'👷',equipo:'🛠️',herramienta:'🔧',alquiler:'🏗️',otro:'•'};
 const COST_COLOR={pintura:'#a855f7',materiales:'#2fe6ff','mano-obra':'#19f7a4',equipo:'#ffcf5a',herramienta:'#5a6bff',alquiler:'#ff5d7a',otro:'#9aa0cf'};
-function blankItem(){ return { id:null, category:'pintura-interior', cost_type:'mano-obra', description:'', unit:'m2', is_area:1, width:0, height:0, qcount:1, deduction:0, qty:0, unit_price:0, coats:Number(S.settings.default_coats||2), paint_yield:Number(S.settings.default_yield||35) }; }
+function blankItem(){ return { id:null, category:'pintura-interior', cost_type:'mano-obra', description:'', unit:'m2', is_area:1, width:0, height:0, qcount:1, deduction:0, qty:0, unit_price:0, coats:Number(S.settings.default_coats||2), paint_yield:Number(S.settings.default_yield||35), taxable:1, apply_margin:1 }; }
 
 function blankQuote(withItem){
   return {
@@ -2012,6 +2014,8 @@ function renderItems(){
       </div>
       <div class="item-foot">
         <label class="switch"><input type="checkbox" ${it.is_area?'checked':''} onchange="itUpd(${i},'is_area',this.checked?1:0)"> Calcular por área (m²)</label>
+        <label class="switch" title="Si lo desmarcas, esta partida no paga ${esc(taxName())}"><input type="checkbox" ${(it.taxable===0||it.taxable===false)?'':'checked'} onchange="itUpd(${i},'taxable',this.checked?1:0)"> Grava ${esc(taxName())}</label>
+        <label class="switch" title="Si lo desmarcas, se cobra al costo sin ganancia (útil para viáticos)"><input type="checkbox" ${(it.apply_margin===0||it.apply_margin===false)?'':'checked'} onchange="itUpd(${i},'apply_margin',this.checked?1:0)"> Lleva ganancia</label>
         ${it.is_area?`<label style="display:flex;align-items:center;gap:7px;font-size:13px;color:var(--muted)">P. unit. <input type="number" step="0.01" min="0" style="width:100px" value="${it.unit_price||0}" oninput="itUpd(${i},'unit_price',this.value)"></label><label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)">Manos <input type="number" step="1" min="1" style="width:60px" value="${it.coats||2}" oninput="itUpd(${i},'coats',this.value)"></label><label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)">m²/gal <input type="number" step="1" min="1" style="width:66px" value="${it.paint_yield||35}" oninput="itUpd(${i},'paint_yield',this.value)"></label><span class="mat-hint" id="itmeta-${i}"></span>`:''}
         <span class="ln" id="itln-${i}">${money(lineTotal(it))}</span>
       </div>
@@ -2244,17 +2248,36 @@ function recalc(){
     const meta=$('itmeta-'+i);
     if(meta){ if(it.is_area){ const area=itemQty(it); const gal=galons(it); meta.textContent=`${area.toFixed(2)} m² · ${gal} gal`; meta.style.display=''; } else meta.style.display='none'; }
   });
-  const marginAmt=cost*q.margin_pct/100;
-  const sub=cost+marginAmt;   // precio de venta antes de descuento
+  // Base gravable vs exenta: cada partida puede llevar o no ganancia e impuesto
+  let baseTaxable=0, baseExempt=0, marginAmt=0;
+  q.items.forEach(it=>{
+    const line=lineTotal(it);
+    const withMargin = !(it.apply_margin===0||it.apply_margin===false);
+    const sale = withMargin ? line*(1+q.margin_pct/100) : line;
+    if(withMargin) marginAmt += sale-line;
+    if(it.taxable===0||it.taxable===false) baseExempt+=sale; else baseTaxable+=sale;
+  });
+  const sub=baseTaxable+baseExempt;   // precio de venta antes de descuento
   let disc=0;
   if(q.discount_type==='percent') disc=sub*q.discount_value/100;
   else if(q.discount_type==='amount') disc=q.discount_value;
   disc=Math.min(disc,sub);
-  const taxable=sub-disc; const tax=taxable*q.tax_rate/100; const total=taxable+tax;
+  const shareTaxable = sub>0 ? baseTaxable/sub : 0;
+  const netTaxable = baseTaxable - disc*shareTaxable;
+  const tax=netTaxable*q.tax_rate/100;
+  const total=sub-disc+tax;
   $('t_cost').textContent=money(cost);
   $('t_margin_row').style.display = marginAmt>0?'flex':'none';
   $('t_margin_lbl').textContent='Ganancia ('+q.margin_pct+'%)';
   $('t_margin').textContent='+'+money(marginAmt);
+  // Fila de exentos: solo aparece si hay partidas sin impuesto
+  const exRow=$('t_exempt_row');
+  if(exRow){
+    exRow.style.display = baseExempt>0?'flex':'none';
+    $('t_exempt').textContent=money(baseExempt);
+    $('t_taxbase').textContent=money(baseTaxable);
+    const tbRow=$('t_taxbase_row'); if(tbRow) tbRow.style.display = baseExempt>0?'flex':'none';
+  }
   $('t_sub').textContent=money(sub);
   $('t_disc_row').style.display = disc>0?'flex':'none';
   $('t_disc').textContent='-'+money(disc);
@@ -2414,13 +2437,24 @@ function printQuote(){
   const q=S.editing; const c=S.clients.find(x=>x.id===$('q_client').value);
   const st=S.settings;
   recalc();
-  const factor = 1 + Number($('q_margin').value||0)/100;   // ganancia incluida en el precio al cliente
-  let cost=0; q.items.forEach(it=>cost+=lineTotal(it));
-  let sub=cost*factor;
+  const marginPct = Number($('q_margin').value||0);
+  const factor = 1 + marginPct/100;   // ganancia incluida en el precio al cliente
+  // Precio de venta de cada partida (respeta si lleva ganancia o no)
+  const salePrice = it => lineTotal(it) * ((it.apply_margin===0||it.apply_margin===false) ? 1 : factor);
+  const saleUnit  = it => (+it.unit_price||0) * ((it.apply_margin===0||it.apply_margin===false) ? 1 : factor);
+  let baseTaxable=0, baseExempt=0;
+  q.items.forEach(it=>{
+    const s=salePrice(it);
+    if(it.taxable===0||it.taxable===false) baseExempt+=s; else baseTaxable+=s;
+  });
+  const sub = baseTaxable + baseExempt;
   let disc=0; const dt=$('q_disc_type').value, dv=Number($('q_disc_val').value||0);
   if(dt==='percent') disc=sub*dv/100; else if(dt==='amount') disc=dv; disc=Math.min(disc,sub);
-  const taxable=sub-disc, tax=taxable*Number($('q_tax').value||0)/100, total=taxable+tax;
-  const bd={}; q.items.forEach(it=>{ const lt=lineTotal(it)*factor; if(lt>0){ const k=it.cost_type||'otro'; bd[k]=(bd[k]||0)+lt; } });
+  const shareTaxable = sub>0 ? baseTaxable/sub : 0;
+  const netTaxable = baseTaxable - disc*shareTaxable;
+  const tax = netTaxable*Number($('q_tax').value||0)/100;
+  const total = sub - disc + tax;
+  const bd={}; q.items.forEach(it=>{ const lt=salePrice(it); if(lt>0){ const k=it.cost_type||'otro'; bd[k]=(bd[k]||0)+lt; } });
   const bdKeys=Object.keys(bd).sort((a,b)=>bd[b]-bd[a]);
   const bdHtml = (bdKeys.length>1 && sub>0) ? `<div style="margin-top:22px"><div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px">Desglose por rubro</div>
     <table style="border-collapse:collapse;font-size:12.5px;min-width:260px">${bdKeys.map(k=>`<tr><td style="padding:4px 14px 4px 0;color:#444">${COST_LBL[k]||k}</td><td style="padding:4px 0;text-align:right;font-weight:600">${money(bd[k])} <span style="color:#999">· ${Math.round(bd[k]/sub*100)}%</span></td></tr>`).join('')}</table></div>` : '';
@@ -2460,19 +2494,23 @@ function printQuote(){
         <th style="text-align:right;padding:9px 10px;border-bottom:2px solid #7b2ff7">P. Unit.</th>
         <th style="text-align:right;padding:9px 10px;border-bottom:2px solid #7b2ff7">Total</th>
       </tr></thead><tbody>
-      ${q.items.filter(it=>it.description||lineTotal(it)).map(it=>`<tr>
-        <td style="padding:9px 10px;border-bottom:1px solid #eee">${esc(it.description||'')}<div style="font-size:11px;color:#999">${COST_LBL[it.cost_type]||''}</div></td>
+      ${q.items.filter(it=>it.description||lineTotal(it)).map(it=>{
+        const exento = (it.taxable===0||it.taxable===false);
+        return `<tr>
+        <td style="padding:9px 10px;border-bottom:1px solid #eee">${esc(it.description||'')}<div style="font-size:11px;color:#999">${COST_LBL[it.cost_type]||''}${exento?' · exento de '+esc(taxName()):''}</div></td>
         <td style="padding:9px 10px;border-bottom:1px solid #eee;text-align:right">${itemQty(it).toFixed(2)}</td>
         <td style="padding:9px 10px;border-bottom:1px solid #eee;text-align:center">${esc(it.unit||'')}</td>
-        <td style="padding:9px 10px;border-bottom:1px solid #eee;text-align:right">${money(it.unit_price*factor)}</td>
-        <td style="padding:9px 10px;border-bottom:1px solid #eee;text-align:right">${money(lineTotal(it)*factor)}</td>
-      </tr>`).join('')}
+        <td style="padding:9px 10px;border-bottom:1px solid #eee;text-align:right">${money(saleUnit(it))}</td>
+        <td style="padding:9px 10px;border-bottom:1px solid #eee;text-align:right">${money(salePrice(it))}</td>
+      </tr>`;}).join('')}
       </tbody>
     </table>
     <div style="display:flex;justify-content:flex-end;margin-top:14px">
       <div style="width:280px;font-size:13px">
         <div style="display:flex;justify-content:space-between;padding:5px 0"><span>Subtotal</span><span>${money(sub)}</span></div>
         ${disc>0?`<div style="display:flex;justify-content:space-between;padding:5px 0"><span>Descuento</span><span>-${money(disc)}</span></div>`:''}
+        ${baseExempt>0?`<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px;color:#777"><span>Base gravable</span><span>${money(baseTaxable)}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px;color:#777"><span>Exento de ${esc(taxName())}</span><span>${money(baseExempt)}</span></div>`:''}
         <div style="display:flex;justify-content:space-between;padding:5px 0"><span>${esc(taxName())} (${Number($('q_tax').value||0)}%)</span><span>${money(tax)}</span></div>
         <div style="display:flex;justify-content:space-between;padding:10px 0;border-top:2px solid #7b2ff7;margin-top:4px;font-size:17px;font-weight:800"><span>TOTAL</span><span style="color:#7b2ff7">${money(total)}</span></div>
       </div>
