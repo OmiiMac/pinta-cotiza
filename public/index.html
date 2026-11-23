@@ -155,7 +155,110 @@ header.topbar::after{
 }
 .brand .wm span{display:block;font-family:'Orbitron',sans-serif;font-weight:700;font-size:10px;letter-spacing:.48em;color:var(--purple-glow);text-shadow:0 0 10px rgba(192,132,252,.6);margin-top:2px}
 
+/* === BOTÓN HAMBURGUESA (abre menú lateral) === */
+.menu-btn{
+  position:relative;width:44px;height:44px;flex:none;
+  background:linear-gradient(135deg,rgba(139,92,246,.2) 0%,rgba(0,212,255,.12) 100%);
+  border:1px solid var(--border2);border-radius:10px;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+  transition:all .2s;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.08);
+}
+.menu-btn:hover{border-color:var(--cyan);box-shadow:0 0 18px rgba(0,212,255,.3),inset 0 1px 0 rgba(255,255,255,.12)}
+.menu-btn span{display:block;width:18px;height:2px;background:var(--cyan2);border-radius:2px;transition:.25s;box-shadow:0 0 6px var(--cyan)}
+.menu-btn:hover span:nth-child(1){transform:translateY(-1px)}
+.menu-btn:hover span:nth-child(3){transform:translateY(1px)}
+
+/* === MENÚ LATERAL (DRAWER) === */
+.drawer-overlay{
+  position:fixed;inset:0;z-index:90;
+  background:rgba(5,3,15,.65);backdrop-filter:blur(6px);
+  opacity:0;pointer-events:none;transition:opacity .25s;
+}
+.drawer-overlay.open{opacity:1;pointer-events:auto}
+.drawer{
+  position:fixed;top:0;left:0;bottom:0;z-index:100;
+  width:300px;max-width:88vw;
+  background:
+    linear-gradient(135deg,rgba(24,18,62,.98) 0%,rgba(14,10,40,.98) 100%);
+  border-right:1px solid var(--border2);
+  box-shadow:4px 0 40px rgba(0,0,0,.6),inset -1px 0 0 rgba(0,212,255,.15);
+  transform:translateX(-100%);transition:transform .35s cubic-bezier(.4,0,.2,1);
+  display:flex;flex-direction:column;
+  overflow:hidden;
+}
+.drawer.open{transform:translateX(0)}
+.drawer::before{content:"";position:absolute;top:0;right:-1px;width:1px;height:100%;pointer-events:none;
+  background:linear-gradient(180deg,transparent,var(--cyan) 20%,var(--purple) 50%,var(--gold) 80%,transparent);opacity:.5}
+.drawer-head{
+  padding:22px 20px 18px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:13px;position:relative;
+}
+.drawer-head .cube{
+  width:52px;height:52px;flex:none;border-radius:12px;position:relative;overflow:hidden;
+  background:radial-gradient(140% 120% at 30% 0%, #1b1442 0%, #0a0820 60%, #000 100%);
+  border:1px solid rgba(139,92,246,.55);
+  box-shadow:0 0 22px rgba(139,92,246,.6),inset 0 0 3px rgba(0,212,255,.4);
+  display:grid;place-items:center;
+}
+.drawer-head .cube img{width:100%;height:100%;object-fit:contain}
+.drawer-head .wm b{display:block;font-family:'Orbitron',sans-serif;font-weight:900;font-size:16px;letter-spacing:.14em;color:var(--cyan2);text-shadow:0 0 12px rgba(0,212,255,.5)}
+.drawer-head .wm span{display:block;font-family:'Orbitron',sans-serif;font-weight:700;font-size:10px;letter-spacing:.42em;color:var(--purple-glow);margin-top:3px}
+.drawer-close{position:absolute;top:14px;right:14px;width:32px;height:32px;border-radius:8px;background:transparent;border:1px solid var(--border);color:var(--muted);cursor:pointer;display:grid;place-items:center;font-size:16px;transition:.15s}
+.drawer-close:hover{border-color:var(--danger);color:var(--danger);background:rgba(255,93,122,.08)}
+.drawer-label{
+  padding:16px 20px 8px;font-size:10px;color:var(--gold-soft);
+  text-transform:uppercase;letter-spacing:.32em;font-weight:700;opacity:.75;
+  font-family:'JetBrains Mono',monospace;
+}
+.drawer-nav{flex:1;overflow-y:auto;padding:4px 10px 24px}
+.drawer-nav::-webkit-scrollbar{width:4px}
+.drawer-nav::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+.drawer-item{
+  position:relative;display:flex;align-items:center;gap:14px;
+  padding:13px 14px;margin:2px 0;border-radius:10px;cursor:pointer;
+  color:var(--text-soft);font-weight:600;font-size:14px;letter-spacing:.01em;
+  background:transparent;border:1px solid transparent;
+  transition:all .18s cubic-bezier(.4,0,.2,1);
+  text-align:left;width:100%;font-family:inherit;
+}
+.drawer-item .di-ic{
+  font-size:22px;width:36px;height:36px;flex:none;
+  display:grid;place-items:center;border-radius:9px;
+  background:linear-gradient(135deg,rgba(139,92,246,.14) 0%,rgba(0,212,255,.08) 100%);
+  border:1px solid var(--border);
+  filter:drop-shadow(0 0 4px rgba(0,212,255,.3));
+  transition:.2s;
+}
+.drawer-item .di-lbl{flex:1}
+.drawer-item .di-arrow{opacity:0;color:var(--cyan);transition:all .2s;transform:translateX(-6px)}
+.drawer-item:hover{
+  color:#fff;background:linear-gradient(90deg,rgba(139,92,246,.14) 0%,rgba(0,212,255,.06) 100%);
+  border-color:var(--border);
+  transform:translateX(3px);
+}
+.drawer-item:hover .di-ic{border-color:var(--cyan);box-shadow:0 0 14px rgba(0,212,255,.25);background:linear-gradient(135deg,rgba(139,92,246,.22) 0%,rgba(0,212,255,.14) 100%)}
+.drawer-item:hover .di-arrow{opacity:1;transform:translateX(0)}
+.drawer-item.active{
+  color:#fff;
+  background:linear-gradient(90deg,rgba(139,92,246,.28) 0%,rgba(0,212,255,.14) 100%);
+  border-color:rgba(0,212,255,.4);
+  box-shadow:0 0 20px rgba(139,92,246,.25),inset 0 0 1px rgba(0,212,255,.5);
+}
+.drawer-item.active .di-ic{
+  border-color:var(--cyan);
+  background:linear-gradient(135deg,var(--purple) 0%,var(--cyan) 100%);
+  box-shadow:0 0 18px rgba(0,212,255,.6);
+  filter:drop-shadow(0 0 6px rgba(255,255,255,.3));
+}
+.drawer-item.active .di-arrow{opacity:1;transform:translateX(0);color:var(--gold-soft)}
+.drawer-foot{padding:14px 20px;border-top:1px solid var(--border);font-size:11px;color:var(--muted2);letter-spacing:.08em;text-align:center;font-family:'JetBrains Mono',monospace}
+.drawer-foot span{color:var(--gold-soft)}
+
 nav.tabs{display:flex;gap:4px;margin-left:auto;flex-wrap:wrap}
+@media(max-width:760px){
+  nav.tabs{display:none}
+}
 nav.tabs button{
   position:relative;
   background:transparent;border:1px solid transparent;color:var(--muted);
@@ -450,26 +553,87 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
 .badge.rechazada{color:var(--danger);border-color:rgba(255,93,122,.5);background:rgba(255,93,122,.08)}
 .tag{display:inline-block;padding:3px 9px;border-radius:5px;font-size:10.5px;background:rgba(212,175,55,.08);border:1px solid var(--border-gold);color:var(--gold-soft);letter-spacing:.04em;font-weight:500}
 
-/* ---------- Calendario (Agenda en Inicio) ---------- */
-.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;background:var(--border);border:1px solid var(--border);border-radius:10px;overflow:hidden}
-.cal-head{background:var(--panel2);text-align:center;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.09em;padding:7px 2px;font-weight:600}
-.cal-day{background:var(--panel2);min-height:76px;padding:6px 7px;position:relative;cursor:pointer;transition:background .15s}
-.cal-day:hover{background:var(--panel)}
-.cal-day.other{opacity:.35;background:var(--bg)}
-.cal-day.today{background:rgba(123,47,247,.08);border:1.5px solid var(--purple);border-radius:6px}
-.cal-day .dn{font-size:13px;font-weight:600;color:var(--text);margin-bottom:3px}
-.cal-day.today .dn{color:var(--purple)}
-.cal-day .ev{font-size:10.5px;background:rgba(0,212,255,.12);color:var(--cyan2);border-left:2px solid var(--cyan);padding:2px 5px;border-radius:3px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.cal-day .ev.done{opacity:.5;text-decoration:line-through}
-.cal-day .ev.past{background:rgba(229,85,85,.12);color:#ff8585;border-left-color:#e55}
-.cal-day .ev.cobro{background:rgba(25,247,164,.12);color:var(--green);border-left-color:var(--green)}
-.cal-day .ev.instalacion{background:rgba(255,207,90,.12);color:#ffcf5a;border-left-color:#ffcf5a}
-.cal-day .more{font-size:10px;color:var(--muted);padding:1px 4px}
+/* ---------- Calendario (Agenda en Inicio) — alto contraste ---------- */
+#dashCalendarPanel{
+  background:
+    linear-gradient(135deg,rgba(24,18,62,.92) 0%,rgba(18,14,48,.9) 100%) !important;
+  border:1px solid var(--border2) !important;
+}
+.cal-grid{
+  display:grid;grid-template-columns:repeat(7,1fr);gap:2px;
+  background:rgba(8,5,26,.85);
+  border:1px solid var(--border2);border-radius:10px;overflow:hidden;
+  padding:2px;
+  box-shadow:inset 0 0 20px rgba(0,0,0,.4);
+}
+.cal-head{
+  background:linear-gradient(180deg,rgba(139,92,246,.22) 0%,rgba(139,92,246,.12) 100%);
+  text-align:center;font-size:11px;color:var(--cyan2);text-transform:uppercase;letter-spacing:.12em;
+  padding:9px 2px;font-weight:700;font-family:'Orbitron',sans-serif;
+  border-bottom:1px solid var(--border2);
+}
+.cal-day{
+  background:linear-gradient(180deg,rgba(40,30,88,.65) 0%,rgba(28,20,70,.65) 100%);
+  min-height:84px;padding:7px 8px;position:relative;cursor:pointer;
+  transition:all .18s cubic-bezier(.4,0,.2,1);
+  border-radius:3px;
+}
+.cal-day:hover{
+  background:linear-gradient(180deg,rgba(55,40,120,.8) 0%,rgba(40,28,98,.8) 100%);
+  box-shadow:inset 0 0 0 1px rgba(0,212,255,.3);
+  transform:scale(1.015);
+}
+.cal-day.other{
+  opacity:.45;
+  background:rgba(14,10,40,.5);
+}
+.cal-day.other .dn{color:var(--muted2)}
+.cal-day.today{
+  background:linear-gradient(180deg,rgba(139,92,246,.4) 0%,rgba(0,212,255,.22) 100%);
+  box-shadow:
+    inset 0 0 0 2px var(--cyan),
+    0 0 18px rgba(0,212,255,.35);
+  border-radius:4px;
+}
+.cal-day.today .dn{
+  color:#fff;font-weight:800;
+  text-shadow:0 0 12px var(--cyan),0 0 4px var(--cyan);
+}
+.cal-day .dn{
+  font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px;
+  font-family:'Orbitron',sans-serif;
+  text-shadow:0 0 6px rgba(0,0,0,.6);
+}
+.cal-day .ev{
+  font-size:10.5px;font-weight:600;
+  background:linear-gradient(90deg,rgba(0,212,255,.28) 0%,rgba(0,212,255,.15) 100%);
+  color:#fff;
+  border-left:3px solid var(--cyan);
+  padding:3px 6px;border-radius:3px;margin-bottom:2px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  box-shadow:0 1px 3px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.08);
+  text-shadow:0 1px 2px rgba(0,0,0,.6);
+}
+.cal-day .ev:hover{filter:brightness(1.2);transform:translateX(2px)}
+.cal-day .ev.done{opacity:.4;text-decoration:line-through}
+.cal-day .ev.past{
+  background:linear-gradient(90deg,rgba(255,93,122,.28) 0%,rgba(255,93,122,.12) 100%);
+  color:#ffb3c0;border-left-color:#ff5d7a;
+}
+.cal-day .ev.cobro{
+  background:linear-gradient(90deg,rgba(57,255,20,.28) 0%,rgba(25,247,164,.12) 100%);
+  color:#aaffaa;border-left-color:var(--green);
+}
+.cal-day .ev.instalacion{
+  background:linear-gradient(90deg,rgba(255,207,90,.3) 0%,rgba(255,207,90,.12) 100%);
+  color:#fff0b3;border-left-color:#ffcf5a;
+}
+.cal-day .more{font-size:10px;color:var(--gold-soft);padding:1px 4px;font-weight:600;font-family:'JetBrains Mono',monospace}
 @media(max-width:620px){
-  .cal-day{min-height:54px;padding:4px 4px}
-  .cal-day .ev{font-size:9px;padding:1px 3px}
-  .cal-day .dn{font-size:11px}
-  .cal-head{font-size:9px}
+  .cal-day{min-height:58px;padding:4px 5px}
+  .cal-day .ev{font-size:9.5px;padding:2px 4px}
+  .cal-day .dn{font-size:12px}
+  .cal-head{font-size:9.5px;padding:7px 2px}
 }
 
 /* ---------- Items editor ---------- */
@@ -755,6 +919,9 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
 <body>
 
 <header class="topbar">
+  <button class="menu-btn" onclick="openDrawer()" title="Menú" aria-label="Abrir menú">
+    <span></span><span></span><span></span>
+  </button>
   <div class="brand" onclick="go('dash')">
     <div class="cube" id="brandLogo">
       <svg width="30" height="30" viewBox="0 0 48 48" fill="none">
@@ -783,6 +950,42 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
     <button data-v="settings">⚙️ Ajustes</button>
   </nav>
 </header>
+
+<!-- MENÚ LATERAL (DRAWER) -->
+<div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
+<aside class="drawer" id="drawer">
+  <div class="drawer-head">
+    <div class="cube">
+      <svg width="34" height="34" viewBox="0 0 48 48" fill="none">
+        <path d="M24 5 L41 14.5 L24 24 L7 14.5 Z" fill="#c23be8"/>
+        <path d="M7 14.5 L24 24 L24 43 L7 33.5 Z" fill="#6f29e6"/>
+        <path d="M41 14.5 L24 24 L24 43 L41 33.5 Z" fill="#9a2ff0"/>
+        <path d="M15 10.4 L24 15.4 L19.5 17.9 L10.5 12.9 Z" fill="#e7b4ff" opacity=".85"/>
+        <path d="M29 31 h6.4 M35.4 31 l-2.8 -2.6 M35.4 31 l-2.8 2.6" stroke="#19f7a4" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      </svg>
+    </div>
+    <div class="wm">
+      <b>MESHIPPING</b>
+      <span>// TERMINAL</span>
+    </div>
+    <button class="drawer-close" onclick="closeDrawer()" aria-label="Cerrar">✕</button>
+  </div>
+  <div class="drawer-label">Centro de control</div>
+  <nav class="drawer-nav" id="drawerNav">
+    <button class="drawer-item active" data-v="dash"      onclick="drawerGo('dash')"><span class="di-ic">🏠</span><span class="di-lbl">Inicio</span><span class="di-arrow">→</span></button>
+    <button class="drawer-item" data-v="projects"  onclick="drawerGo('projects')"><span class="di-ic">💼</span><span class="di-lbl">Proyectos</span><span class="di-arrow">→</span></button>
+    <button class="drawer-item" data-v="quotes"    onclick="drawerGo('quotes')"><span class="di-ic">🧾</span><span class="di-lbl">Cotizaciones</span><span class="di-arrow">→</span></button>
+    <button class="drawer-item" data-v="clients"   onclick="drawerGo('clients')"><span class="di-ic">👥</span><span class="di-lbl">Clientes y Prospectos</span><span class="di-arrow">→</span></button>
+    <button class="drawer-item" data-v="personnel" onclick="drawerGo('personnel')"><span class="di-ic">👷</span><span class="di-lbl">Personal</span><span class="di-arrow">→</span></button>
+    <button class="drawer-item" data-v="finances"  onclick="drawerGo('finances')"><span class="di-ic">💰</span><span class="di-lbl">Finanzas</span><span class="di-arrow">→</span></button>
+    <button class="drawer-item" data-v="catalog"   onclick="drawerGo('catalog')"><span class="di-ic">📦</span><span class="di-lbl">Catálogo</span><span class="di-arrow">→</span></button>
+    <button class="drawer-item" data-v="inventory" onclick="drawerGo('inventory')"><span class="di-ic">🏷️</span><span class="di-lbl">Inventario</span><span class="di-arrow">→</span></button>
+    <button class="drawer-item" data-v="plans"     onclick="drawerGo('plans')"><span class="di-ic">📐</span><span class="di-lbl">Planos</span><span class="di-arrow">→</span></button>
+    <div class="drawer-label" style="padding:14px 10px 6px">Sistema</div>
+    <button class="drawer-item" data-v="settings"  onclick="drawerGo('settings')"><span class="di-ic">⚙️</span><span class="di-lbl">Ajustes</span><span class="di-arrow">→</span></button>
+  </nav>
+  <div class="drawer-foot">v2.0 · <span>MESHIPPING // TERMINAL</span></div>
+</aside>
 
 <main>
   <!-- DASHBOARD -->
@@ -1384,6 +1587,21 @@ function go(v){
   updateQuoteFab();
 }
 document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>go(b.dataset.v));
+
+// === MENÚ LATERAL (DRAWER) ===
+function openDrawer(){ $('drawer').classList.add('open'); $('drawerOverlay').classList.add('open'); document.body.style.overflow='hidden'; }
+function closeDrawer(){ $('drawer').classList.remove('open'); $('drawerOverlay').classList.remove('open'); document.body.style.overflow=''; }
+function drawerGo(v){ closeDrawer(); go(v); }
+// Marca el ítem activo del drawer cuando cambia la vista
+(function(){
+  const _origGo = go;
+  window.go = function(v){
+    _origGo(v);
+    document.querySelectorAll('.drawer-item').forEach(b=>b.classList.toggle('active', b.dataset.v===v));
+  };
+})();
+// Cerrar con ESC
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeDrawer(); });
 
 // ============================================================
 // Load
